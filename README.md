@@ -6,9 +6,20 @@ DVC, MLflow, Docker e boas praticas de engenharia.
 ## Setup
 
 ```powershell
+$env:UV_PYTHON_INSTALL_DIR="$PWD/.uv-python"
+$env:PRE_COMMIT_HOME="$PWD/.pre-commit-cache"
 uv --cache-dir .uv-cache sync
-uv --cache-dir .uv-cache run pre-commit install
+git config core.hooksPath .githooks
 ```
+
+Os caches do projeto devem ficar no proprio workspace em `D:\POS\tech-challenge-fase-2`:
+
+- `.uv-cache/`: cache de pacotes do uv.
+- `.uv-python/`: instalacoes Python gerenciadas pelo uv.
+- `.pre-commit-cache/`: repositorios/cache dos hooks de pre-commit.
+
+O hook versionado em `.githooks/pre-commit` exporta essas variaveis antes de
+rodar o `pre-commit`, evitando cache no perfil do usuario em `C:\`.
 
 Configuracao opcional via `.env`:
 

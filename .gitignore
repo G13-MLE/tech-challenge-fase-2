@@ -9,12 +9,14 @@ wheels/
 # Virtual environments
 .venv
 .uv-cache/
+.uv-python/
 
 # Notebooks
 .ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/
 
 # Tool caches
+.pre-commit-cache/
 .pytest_cache/
 .ruff_cache/
 
