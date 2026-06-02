@@ -1,7 +1,29 @@
 [project]
 name = "techchallenge-fase2"
 version = "0.1.0"
-description = "Add your description here"
+description = "Product recommendation system for the Pos Tech Tech Challenge Fase 02"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pydantic-settings>=2.14.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = ["notebooks/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ANN"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN201"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
+    "notebook>=7.5.6",
+    "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
+    "ruff>=0.15.15",
+]

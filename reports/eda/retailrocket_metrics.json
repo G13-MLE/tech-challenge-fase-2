@@ -1,0 +1,325 @@
+{
+  "dataset": {
+    "name": "RetailRocket Ecommerce Dataset",
+    "source_url": "https://www.kaggle.com/datasets/retailrocket/ecommerce-dataset",
+    "local_path": "D:\\Dataset\\archive"
+  },
+  "minimum_interactions": {
+    "required_user_item_interactions": 10000,
+    "observed_events": 2756101,
+    "observed_unique_user_item_pairs": 2145179,
+    "passes": true
+  },
+  "events": {
+    "file_name": "events.csv",
+    "file_size_bytes": 94237913,
+    "row_count": 2756101,
+    "columns": [
+      "timestamp",
+      "visitorid",
+      "event",
+      "itemid",
+      "transactionid"
+    ],
+    "missing_values": {
+      "timestamp": 0,
+      "visitorid": 0,
+      "event": 0,
+      "itemid": 0,
+      "transactionid": 2733644
+    },
+    "duplicate_rows": 460,
+    "expected_columns": [
+      "timestamp",
+      "visitorid",
+      "event",
+      "itemid",
+      "transactionid"
+    ],
+    "expected_column_types": {
+      "timestamp": "unix_ms",
+      "visitorid": "integer_id",
+      "event": "category",
+      "itemid": "integer_id",
+      "transactionid": "nullable_integer_id"
+    },
+    "schema": {
+      "matches_expected": true,
+      "missing_columns": [],
+      "unexpected_columns": []
+    },
+    "event_counts": {
+      "view": 2664312,
+      "addtocart": 69332,
+      "transaction": 22457
+    },
+    "unique_visitors": 1407580,
+    "unique_items": 235061,
+    "unique_user_item_pairs": 2145179,
+    "sparsity": 0.9999935164947027,
+    "date_range": {
+      "start": "2015-05-03",
+      "end": "2015-09-18"
+    },
+    "temporal_split_cutoffs": {
+      "train_until": "2015-08-02",
+      "validation_until": "2015-08-25"
+    },
+    "monthly_counts": {
+      "2015-05": 590652,
+      "2015-06": 610393,
+      "2015-07": 697984,
+      "2015-08": 553362,
+      "2015-09": 303710
+    },
+    "top_visitors": [
+      {
+        "id": "1150086",
+        "count": 7757
+      },
+      {
+        "id": "530559",
+        "count": 4328
+      },
+      {
+        "id": "152963",
+        "count": 3024
+      },
+      {
+        "id": "895999",
+        "count": 2474
+      },
+      {
+        "id": "163561",
+        "count": 2410
+      },
+      {
+        "id": "371606",
+        "count": 2345
+      },
+      {
+        "id": "286616",
+        "count": 2252
+      },
+      {
+        "id": "684514",
+        "count": 2246
+      },
+      {
+        "id": "892013",
+        "count": 2024
+      },
+      {
+        "id": "861299",
+        "count": 1991
+      }
+    ],
+    "top_items": [
+      {
+        "id": "187946",
+        "count": 3412
+      },
+      {
+        "id": "461686",
+        "count": 2978
+      },
+      {
+        "id": "5411",
+        "count": 2334
+      },
+      {
+        "id": "370653",
+        "count": 1854
+      },
+      {
+        "id": "219512",
+        "count": 1800
+      },
+      {
+        "id": "257040",
+        "count": 1647
+      },
+      {
+        "id": "298009",
+        "count": 1642
+      },
+      {
+        "id": "96924",
+        "count": 1633
+      },
+      {
+        "id": "309778",
+        "count": 1628
+      },
+      {
+        "id": "384302",
+        "count": 1608
+      }
+    ]
+  },
+  "item_properties": {
+    "files": [
+      {
+        "file_name": "item_properties_part1.csv",
+        "file_size_bytes": 484315749,
+        "row_count": 10999999,
+        "columns": [
+          "timestamp",
+          "itemid",
+          "property",
+          "value"
+        ],
+        "missing_values": {
+          "timestamp": 0,
+          "itemid": 0,
+          "property": 0,
+          "value": 0
+        },
+        "duplicate_rows": null,
+        "expected_columns": [
+          "timestamp",
+          "itemid",
+          "property",
+          "value"
+        ],
+        "expected_column_types": {
+          "timestamp": "unix_ms",
+          "itemid": "integer_id",
+          "property": "category",
+          "value": "string"
+        },
+        "schema": {
+          "matches_expected": true,
+          "missing_columns": [],
+          "unexpected_columns": []
+        }
+      },
+      {
+        "file_name": "item_properties_part2.csv",
+        "file_size_bytes": 408929907,
+        "row_count": 9275903,
+        "columns": [
+          "timestamp",
+          "itemid",
+          "property",
+          "value"
+        ],
+        "missing_values": {
+          "timestamp": 0,
+          "itemid": 0,
+          "property": 0,
+          "value": 0
+        },
+        "duplicate_rows": null,
+        "expected_columns": [
+          "timestamp",
+          "itemid",
+          "property",
+          "value"
+        ],
+        "expected_column_types": {
+          "timestamp": "unix_ms",
+          "itemid": "integer_id",
+          "property": "category",
+          "value": "string"
+        },
+        "schema": {
+          "matches_expected": true,
+          "missing_columns": [],
+          "unexpected_columns": []
+        }
+      }
+    ],
+    "row_count": 20275902,
+    "unique_items": 417053,
+    "unique_properties": 1104,
+    "categoryid_rows": 788214,
+    "items_with_categoryid": 417053,
+    "date_range": {
+      "start": "2015-05-10",
+      "end": "2015-09-13"
+    },
+    "top_properties": [
+      {
+        "id": "888",
+        "count": 3000398
+      },
+      {
+        "id": "790",
+        "count": 1790516
+      },
+      {
+        "id": "available",
+        "count": 1503639
+      },
+      {
+        "id": "categoryid",
+        "count": 788214
+      },
+      {
+        "id": "6",
+        "count": 631471
+      },
+      {
+        "id": "283",
+        "count": 597419
+      },
+      {
+        "id": "776",
+        "count": 574220
+      },
+      {
+        "id": "678",
+        "count": 481966
+      },
+      {
+        "id": "364",
+        "count": 476486
+      },
+      {
+        "id": "202",
+        "count": 448938
+      }
+    ],
+    "duplicate_rows": null,
+    "duplicate_note": "Duplicidades exatas nao sao rastreadas nos arquivos de propriedades."
+  },
+  "category_tree": {
+    "file_name": "category_tree.csv",
+    "file_size_bytes": 14454,
+    "row_count": 1669,
+    "columns": [
+      "categoryid",
+      "parentid"
+    ],
+    "missing_values": {
+      "categoryid": 0,
+      "parentid": 25
+    },
+    "duplicate_rows": 0,
+    "expected_columns": [
+      "categoryid",
+      "parentid"
+    ],
+    "expected_column_types": {
+      "categoryid": "integer_id",
+      "parentid": "nullable_integer_id"
+    },
+    "schema": {
+      "matches_expected": true,
+      "missing_columns": [],
+      "unexpected_columns": []
+    },
+    "unique_categories": 1669,
+    "unique_parent_categories": 362,
+    "root_categories": 25
+  },
+  "recommendations": [
+    "Usar split cronologico para evitar vazamento entre treino e avaliacao.",
+    "Usar corte de treino em 2015-08-02 e validacao em 2015-08-25.",
+    "Mapear eventos para pesos implicitos: view=1, addtocart=3, transaction=5.",
+    "Usar categoryid como primeira feature de item.",
+    "Tratar demais propriedades como metadados esparsos apos filtro de cardinalidade.",
+    "Versionar CSVs brutos com DVC, sem commit direto no Git."
+  ]
+}

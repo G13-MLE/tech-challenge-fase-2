@@ -8,6 +8,23 @@ wheels/
 
 # Virtual environments
 .venv
+.uv-cache/
+
+# Notebooks
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
+# Data and generated model artifacts
+data/raw/
+data/interim/
+data/processed/
+models/*
+!models/.gitkeep
+reports/eda/*.tmp
 
 # Ignora o PDF da fase2, matenho ele no repo para rapida referencia com agentes de IA
 Tech Challenge Fase 02.pdf

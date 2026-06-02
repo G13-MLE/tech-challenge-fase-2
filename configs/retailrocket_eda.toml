@@ -1,0 +1,7 @@
+[dataset]
+default_dir = "D:/Dataset/archive"
+required_interactions = 10000
+
+[outputs]
+eda_dir = "reports/eda"
+
