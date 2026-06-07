@@ -1,4 +1,4 @@
-def main() -> None:
+def main():
     print("Hello from fase2!")
 
 
