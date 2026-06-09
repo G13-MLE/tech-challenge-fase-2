@@ -54,3 +54,5 @@ Thumbs.db
 # Ignora o PDF da fase2, matenho ele no repo para rapida referencia com agentes de IA
 Tech Challenge Fase 02.pdf
 
+# AI tooling
+.ai-jail
