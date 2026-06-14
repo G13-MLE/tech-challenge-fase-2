@@ -1,18 +1,38 @@
 [project]
 name = "techchallenge-fase2"
 version = "0.1.0"
-description = "Add your description here"
+description = "Sistema de recomendacao hibrido (MLP + Divergencia KL) para e-commerce"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "altair>=6.2.1",
-    "matplotlib==3.10.9",
+    "matplotlib>=3.10.9",
     "pandas>=2.3.3",
-    "polars==1.41.2",
+    "polars>=1.41.2",
+    "pyarrow>=18.0.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel>=7.2.0",
     "notebook>=7.5.6",
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
