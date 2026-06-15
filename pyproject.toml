@@ -1,7 +1,26 @@
 [project]
 name = "techchallenge-fase2"
 version = "0.1.0"
-description = "Add your description here"
+description = "Sistema de recomendação de produtos com PyTorch, DVC e MLflow"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.6.0",
+    "scikit-learn>=1.6.0",
+    "mlflow>=2.21.0",
+    "pandas>=2.3.3",
+    "numpy>=2.2.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.8.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.11.0",
+    "pre-commit>=4.2.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
