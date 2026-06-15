@@ -17,7 +17,7 @@ dist/
 .env
 !.env.example
 
-# Data e modelos (ignore por extensão, preservando a estrutura)
+# Dados e modelos (ignore por extensão, preservando a estrutura)
 data/**/*.csv
 data/**/*.parquet
 data/**/*.json
@@ -41,6 +41,13 @@ mlartifacts/
 tests/
 .pre-commit-config.yaml
 
+# Documentação e scripts (não necessários em produção)
+docs/
+scripts/
+
+# uv cache local
+.uv/
+
 # IDE
 .idea/
 .vscode/
@@ -51,6 +58,6 @@ tests/
 .DS_Store
 Thumbs.db
 
-# Docs
+# Documentação
 *.md
 *.pdf
