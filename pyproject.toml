@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "torch>=2.6.0",
     "scikit-learn>=1.6.0",
-    "mlflow>=2.21.0",
+    "mlflow>=3.13.0",
     "pandas>=2.3.3",
     "numpy>=2.2.0",
     "pydantic>=2.10.0",
