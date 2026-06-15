@@ -497,7 +497,7 @@ def _(mo):
 
 
 @app.cell
-def _(category_tree, item_properties, pd):
+def _(category_tree, item_properties, pd, pl):
     _special = item_properties[item_properties["property"].isin(["categoryid", "available"])].copy()
     _cats = _special[_special["property"].eq("categoryid")].copy()
     _cats["categoryid_num"] = pd.to_numeric(_cats["value"], errors="coerce").astype("Int64")
@@ -541,10 +541,18 @@ def _(mo):
 
 
 @app.cell
-def _(pd):
+def _(events_path, pd):
+    events_pd = pd.read_csv(events_path)
+    events_pd["datetime"] = pd.to_datetime(events_pd["timestamp"], unit="ms", utc=True)
+    events_pd
+    return (events_pd,)
+
+
+@app.cell
+def _(events_pd, pd):
     EVENT_ORDER = ["view", "addtocart", "transaction"]
 
-    flow_events = events.sort_values(["visitorid", "datetime", "itemid"]).copy()
+    flow_events = events_pd.sort_values(["visitorid", "datetime", "itemid"]).copy()
     flow_events["next_event"] = flow_events.groupby("visitorid")["event"].shift(-1)
     flow_events["next_itemid"] = flow_events.groupby("visitorid")["itemid"].shift(-1)
     flow_events["minutes_to_next"] = (
@@ -614,8 +622,8 @@ def _(mo):
 
 
 @app.cell
-def _(events, pd):
-    feature_events = events.sort_values(["datetime", "visitorid", "itemid"]).copy()
+def _(events_pd, pd):
+    feature_events = events_pd.sort_values(["datetime", "visitorid", "itemid"]).copy()
     feature_events.insert(0, "event_id", range(1, len(feature_events) + 1))
     feature_events["user_events_before"] = feature_events.groupby("visitorid").cumcount()
     feature_events["item_events_before"] = feature_events.groupby("itemid").cumcount()
