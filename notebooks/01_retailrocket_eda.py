@@ -660,13 +660,143 @@ def _(events_pd, pd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # 5. Decisoes tecnicas e proximos passos
+    # 5. Perfis comportamentais e cenarios de recomendacao
+
+    A PR #26 trouxe um ponto importante: alem de entender o dataset, a EDA precisa apontar
+    qual experiencia de recomendacao queremos viabilizar. Como nao existem dados demograficos
+    do visitor, os perfis precisam ser derivados do proprio historico.
+    """)
+    return
+
+
+@app.cell
+def _(events_pd, pd):
+    transaction_events = events_pd[events_pd["event"].eq("transaction")].copy()
+
+    top_transaction_items = (
+        transaction_events.groupby("itemid")
+        .size()
+        .rename("transactions")
+        .sort_values(ascending=False)
+        .head(15)
+        .reset_index()
+    )
+
+    top_buyers = (
+        transaction_events.groupby("visitorid")
+        .size()
+        .rename("transactions")
+        .sort_values(ascending=False)
+        .head(15)
+        .reset_index()
+    )
+
+    top_transaction_items, top_buyers
+    return top_buyers, top_transaction_items, transaction_events
+
+
+@app.cell
+def _(events_pd, pd):
+    visitor_events = pd.crosstab(events_pd["visitorid"], events_pd["event"])
+    for _event in ["view", "addtocart", "transaction"]:
+        if _event not in visitor_events.columns:
+            visitor_events[_event] = 0
+
+    visitor_events["total_events"] = visitor_events[["view", "addtocart", "transaction"]].sum(
+        axis=1
+    )
+    visitor_events["unique_items"] = events_pd.groupby("visitorid")["itemid"].nunique()
+    visitor_events["profile"] = "cold_or_single_view"
+    visitor_events.loc[visitor_events["total_events"].ge(5), "profile"] = "recurring_browser"
+    visitor_events.loc[visitor_events["addtocart"].gt(0), "profile"] = "cart_intent"
+    visitor_events.loc[visitor_events["transaction"].gt(0), "profile"] = "buyer"
+
+    profile_summary = (
+        visitor_events.groupby("profile")
+        .agg(
+            visitors=("total_events", "size"),
+            avg_events=("total_events", "mean"),
+            avg_unique_items=("unique_items", "mean"),
+            avg_views=("view", "mean"),
+            avg_carts=("addtocart", "mean"),
+            avg_transactions=("transaction", "mean"),
+        )
+        .sort_values("visitors", ascending=False)
+        .round(2)
+    )
+
+    profile_summary
+    return profile_summary, visitor_events
+
+
+@app.cell
+def _(pd, transaction_events):
+    transactions_by_hour = (
+        transaction_events.assign(event_hour=transaction_events["datetime"].dt.hour)
+        .groupby("event_hour")
+        .size()
+        .rename("transactions")
+        .reset_index()
+    )
+
+    weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    transactions_by_weekday = (
+        transaction_events.assign(
+            event_dayofweek=transaction_events["datetime"].dt.day_name(),
+        )
+        .groupby("event_dayofweek")
+        .size()
+        .rename("transactions")
+        .reindex(weekday_order)
+        .reset_index()
+    )
+
+    transactions_by_hour, transactions_by_weekday
+    return transactions_by_hour, transactions_by_weekday
+
+
+@app.cell
+def _(pd):
+    recommendation_scenarios = pd.DataFrame(
+        [
+            (
+                "Home / top 5 para visitor",
+                "visitorid + perfil comportamental",
+                "historico, categorias preferidas, recencia, popularidade e fallback",
+                "top 5 itens com maior probabilidade de interacao forte",
+            ),
+            (
+                "Pagina de produto",
+                "item atual + visitor quando existir",
+                "coocorrencia item-item, categoria, disponibilidade e sinais da sessao",
+                "itens similares/complementares ao item exibido",
+            ),
+            (
+                "Cold start",
+                "sem historico suficiente",
+                "best sellers, trending por periodo e categorias mais fortes",
+                "recomendacao segura ate acumular historico",
+            ),
+        ],
+        columns=["cenario", "entrada", "sinais", "saida_esperada"],
+    )
+
+    recommendation_scenarios
+    return (recommendation_scenarios,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # 6. Decisoes tecnicas e proximos passos
 
     | Decisao | Detalhe |
     |---------|---------|
     | **Sessão** | gap ≥ 30min OU (prev == transaction E cur != transaction). Transacoes consecutivas ficam na mesma sessao. |
     | **Split** | Cronologico 70/15/15. Dentro de cada particao, h=[s1..sm-1] vs t=sm. |
     | **Feedback** | Implicito: view=1, addtocart=3, transaction=5 |
+    | **Perfis** | Derivados do historico: cold/single view, recurring browser, cart intent e buyer |
+    | **Cenarios** | Top 5 na home, recomendacao em pagina de produto e fallback cold-start |
     | **Features diretas** | `categoryid`, `available`, property `790` (numerico) |
     | **Features hashed** | Bag-of-tokens apos filtro por cobertura |
     | **Join temporal** | `merge_asof backward` — zero leakage |

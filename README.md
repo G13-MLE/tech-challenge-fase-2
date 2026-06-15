@@ -37,5 +37,15 @@ uv sync
 uv run jupyter notebook notebooks/01_retailrocket_eda.ipynb
 ```
 
+Notebooks da analise:
+
+- `notebooks/01_retailrocket_eda.ipynb`: EDA principal, sinais de eventos,
+  perfis comportamentais e cenarios de recomendacao.
+- `notebooks/02_retailrocket_field_value_analysis.ipynb`: leitura da coluna
+  `value` em `item_properties` e classificacao dos tipos de propriedades.
+- `notebooks/03_retailrocket_feature_flow_analysis.ipynb`: fluxo entre tabelas,
+  plano de join temporal e schema candidato para a tabela de treino.
+
 Os CSVs brutos nao devem ser commitados no Git. Eles serao versionados em etapa
-posterior com DVC.
+posterior com DVC. Em Docker, esse mesmo diretorio deve ser disponibilizado ao
+container por volume, `dvc pull` ou etapa do pipeline.
