@@ -6,14 +6,16 @@ from collections.abc import Iterable
 from techchallenge_fase2.models.base import Interaction, RecommenderModel
 
 
-def _validate_limit(value: int) -> int:
+def validate_limit(value: int) -> int:
+    """Valida se o limite de recomendações é positivo."""
     if value < 1:
         raise ValueError("limit must be positive")
     return value
 
 
-def _resolve_limit(default_limit: int, limit: int | None) -> int:
-    return _validate_limit(default_limit if limit is None else limit)
+def resolve_limit(default_limit: int, limit: int | None) -> int:
+    """Resolve o limite informado ou usa o padrão configurado."""
+    return validate_limit(default_limit if limit is None else limit)
 
 
 class PopularityRecommender(RecommenderModel):
@@ -25,7 +27,7 @@ class PopularityRecommender(RecommenderModel):
         Args:
             default_limit: Default number of items returned by recommend.
         """
-        self._default_limit = _validate_limit(default_limit)
+        self._default_limit = validate_limit(default_limit)
         self._ranked_items: list[str] = []
 
     def fit(self, interactions: Iterable[Interaction]) -> None:
@@ -37,7 +39,7 @@ class PopularityRecommender(RecommenderModel):
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
         """Return the most popular known items."""
         _ = user_id
-        recommendation_limit = _resolve_limit(self._default_limit, limit)
+        recommendation_limit = resolve_limit(self._default_limit, limit)
         return self._ranked_items[:recommendation_limit]
 
 
@@ -50,7 +52,7 @@ class RecentItemsRecommender(RecommenderModel):
         Args:
             default_limit: Default number of items returned by recommend.
         """
-        self._default_limit = _validate_limit(default_limit)
+        self._default_limit = validate_limit(default_limit)
         self._ranked_items: list[str] = []
 
     def fit(self, interactions: Iterable[Interaction]) -> None:
@@ -66,6 +68,6 @@ class RecentItemsRecommender(RecommenderModel):
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
         """Return the most recently observed unique items."""
         _ = user_id
-        recommendation_limit = _resolve_limit(self._default_limit, limit)
+        recommendation_limit = resolve_limit(self._default_limit, limit)
         return self._ranked_items[:recommendation_limit]
 
