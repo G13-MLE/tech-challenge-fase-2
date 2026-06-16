@@ -20,22 +20,30 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 
-# Criar ambiente virtual
-RUN uv venv /app/.venv
+ENV UV_HTTP_TIMEOUT=120
 
-# Instalar torch CPU-only primeiro (índice dedicado)
-# Depois instalar demais dependências de produção
-# --frozen com lock file não funciona para CPU pois o lock contém pacotes CUDA
-RUN uv pip install --python /app/.venv/bin/python \
-    torch --index-url https://download.pytorch.org/whl/cpu && \
-    uv pip install --python /app/.venv/bin/python \
-    scikit-learn \
-    mlflow \
-    pandas \
-    numpy \
-    pydantic \
-    pydantic-settings \
-    python-dotenv
+# Copiar metadados de dependências primeiro (cache de camada Docker)
+COPY pyproject.toml uv.lock ./
+
+# Criar ambiente virtual com pip para instalação resiliente em redes lentas
+RUN uv venv --seed /app/.venv
+
+# Instalar dependências de produção travadas e torch CPU-only pelo índice dedicado.
+# O lock padrão contém pacotes CUDA para Linux, então eles são filtrados no CPU.
+RUN uv export --frozen --no-dev --format requirements-txt --no-hashes \
+        | grep -Ev '^(torch|nvidia-|cuda-|triton)' \
+        > /tmp/requirements-cpu.txt && \
+    /app/.venv/bin/python -m pip install \
+        --retries 10 \
+        --timeout 120 \
+        -r /tmp/requirements-cpu.txt && \
+    /app/.venv/bin/python -m pip install \
+        --retries 10 \
+        --timeout 120 \
+        "torch==2.12.0+cpu" \
+        --index-url https://download.pytorch.org/whl/cpu \
+        --no-deps && \
+    rm /tmp/requirements-cpu.txt
 
 # Limpar caches e arquivos desnecessários do .venv
 RUN find /app/.venv -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null; \
@@ -52,6 +60,8 @@ FROM python:3.13-slim AS builder-gpu
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
+
+ENV UV_HTTP_TIMEOUT=120
 
 # Copiar metadados de dependências primeiro (cache de camada Docker)
 COPY pyproject.toml uv.lock ./

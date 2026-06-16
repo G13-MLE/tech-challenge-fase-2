@@ -47,6 +47,9 @@ scripts/
 
 # uv cache local
 .uv/
+.uv-cache/
+.pre-commit-cache/
+.ruff_cache/
 
 # IDE
 .idea/

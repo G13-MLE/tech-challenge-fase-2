@@ -1,5 +1,12 @@
 .PHONY: help setup test lint verify format docker-build docker-build-gpu mlflow-up mlflow-down
 
+PYTHON := uv run python
+UV_CACHE_DIR ?= .uv-cache
+PRE_COMMIT_HOME ?= .pre-commit-cache
+
+export UV_CACHE_DIR
+export PRE_COMMIT_HOME
+
 # Help padrão
 help:
 	@echo "Tech Challenge Fase 2 - Comandos Disponíveis"
@@ -21,14 +28,14 @@ help:
 	@echo "  make mlflow-down  - Parar containers MLflow"
 	@echo ""
 
+sync:
+	uv sync
+
 setup:
 	@echo "Configurando ambiente..."
-	@if [ ! -f .env ]; then \
-		echo "Criando .env a partir de .env.example..."; \
-		cp .env.example .env; \
-	fi
+	@$(PYTHON) -c "from pathlib import Path; src = Path('.env.example'); dst = Path('.env'); created = not dst.exists(); dst.write_bytes(src.read_bytes()) if created else None; print('Criando .env a partir de .env.example...' if created else '.env já existe; mantendo arquivo local.')"
 	uv sync
-	uv run pre-commit install
+	@$(PYTHON) -c "import subprocess, sys; hooks_path = subprocess.run(['git', 'config', '--get', 'core.hooksPath'], capture_output=True, text=True).stdout.strip(); print('core.hooksPath configurado; instalando apenas ambientes do pre-commit.' if hooks_path else 'Instalando hook do pre-commit...'); command = [sys.executable, '-m', 'pre_commit', 'install-hooks'] if hooks_path else [sys.executable, '-m', 'pre_commit', 'install', '--install-hooks']; raise SystemExit(subprocess.call(command))"
 	@echo "Setup concluído!"
 
 test:
@@ -55,7 +62,7 @@ docker-build-gpu:
 mlflow-up:
 	@echo "Docker: Iniciando MLflow em background..."
 	docker compose -f docker/docker-compose.yml --env-file .env up -d --build
-	@echo "[OK] MLflow iniciado! Acesse http://localhost:$$(grep -E '^MLFLOW_PORT=' .env | cut -d '=' -f2) para usar."
+	@$(PYTHON) -c "from pathlib import Path; values = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if line.startswith('MLFLOW_PORT=')); port = values.get('MLFLOW_PORT', '5000').split('#', 1)[0].strip() or '5000'; print(f'[OK] MLflow iniciado! Acesse http://localhost:{port} para usar.')"
 
 mlflow-down:
 	@echo "[STOP] Parando containers MLflow..."
