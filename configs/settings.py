@@ -1,4 +1,5 @@
 from enum import Enum
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -74,3 +75,9 @@ class Settings(BaseSettings):
             msg = "DVC_REMOTE_URL deve usar s3://, gs:// ou ssh://"
             raise ValueError(msg)
         return stripped_value
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Retorna uma instancia unica de Settings por processo."""
+    return Settings()
