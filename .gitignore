@@ -23,18 +23,22 @@ data/**/*.pkl
 data/**/*.h5
 data/**/*.zip
 data/**/*.tar.gz
-models/**/*.pt
-models/**/*.pth
-models/**/*.onnx
-models/**/*.pkl
-models/**/*.bin
-*.dvc/tmp
+
+# Modelos versionados pelo DVC
+models/*
+!models/*.pt
+!models/*.pkl
+!models/*.csv
+!models/*.json
+!models/*.dvc
+!models/.gitignore
 
 # MLflow
 mlruns/
 mlartifacts/
 
 # DVC
+/.dvc/config
 /tmp/
 .dvc/tmp/
 .dvc/cache/
