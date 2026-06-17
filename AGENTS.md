@@ -22,6 +22,9 @@ dvc.yaml    — Pipeline reprodutível
 - **Menos é mais** - menos linhas, menos arquivos, menos dependências
 - **Prefira imutabilidade** - evite utilização desnecessária de estados em classes
 - **Código em inglês, comentários em português** - utilize sempre esse estilo, códigos em inglês e comentários e documentações em português
+- **Sempre** execute `make test` e `make lint` após qualquer atualização de código.
+- **Sempre** que utilizado o português utilize linguagem técnica e português correto, com acentuação e sem erros.
+- **Muito importante**, o idioma português sempre deve ser acentuado corretamente.
 
 ## Clean Code
 - Funções ≤ 20 linhas; nomes descritivos; type hints em todas as funções públicas.
@@ -51,5 +54,3 @@ dvc.yaml    — Pipeline reprodutível
 - Use mensagens de commit convencionais
 
 ## Importante
-- Sempre execute `make test` e `make lint` após qualquer atualização de código.
-- Sempre que utilizado o português utilize linguagem técnica e português correto, com acentuação e sem erros.
