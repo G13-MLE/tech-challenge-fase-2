@@ -1,7 +1,7 @@
 [project]
 name = "techchallenge-fase2"
 version = "0.1.0"
-description = "Sistema de recomendacao de produtos com PyTorch, DVC e MLflow"
+description = "Sistema de recomendação de produtos com PyTorch, DVC e MLflow"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -17,6 +17,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0",
     "scikit-learn>=1.6.0",
+    "scipy>=1.17.1",
     "torch>=2.6.0",
 ]
 
@@ -26,7 +27,8 @@ dev = [
     "notebook>=7.5.6",
     "pre-commit>=4.2.0",
     "pytest>=8.3.0",
-    "ruff>=0.11.0",
+    "ruff>=0.15.17",
+    "matplotlib-inline>=0.2.2",
 ]
 
 [tool.uv]

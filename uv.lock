@@ -3641,12 +3641,14 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "torch" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "matplotlib-inline" },
     { name = "notebook" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -3667,16 +3669,18 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "scikit-learn", specifier = ">=1.6.0" },
+    { name = "scipy", specifier = ">=1.17.1" },
     { name = "torch", specifier = ">=2.6.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=7.2.0" },
+    { name = "matplotlib-inline", specifier = ">=0.2.2" },
     { name = "notebook", specifier = ">=7.5.6" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.0" },
-    { name = "ruff", specifier = ">=0.11.0" },
+    { name = "ruff", specifier = ">=0.15.17" },
 ]
 
 [[package]]
