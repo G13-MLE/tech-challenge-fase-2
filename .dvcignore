@@ -1,0 +1,3 @@
+# Adicione padrões de arquivos que o DVC deve ignorar, o que pode melhorar
+# o desempenho. Saiba mais em
+# https://dvc.org/doc/user-guide/dvcignore
