@@ -10,6 +10,9 @@ wheels/
 # Virtual environments
 .venv
 .env
+.pre-commit-cache/
+.ruff_cache/
+.uv-cache/
 
 # Dotenv
 *.env
