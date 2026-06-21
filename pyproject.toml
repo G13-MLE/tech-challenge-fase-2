@@ -13,8 +13,6 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.8.0",
     "python-dotenv>=1.0.0",
-    "dotenv>=0.9.9",
-    "ruff>=0.15.17",
 ]
 
 [dependency-groups]
