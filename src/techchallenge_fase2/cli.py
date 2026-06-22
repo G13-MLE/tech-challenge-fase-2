@@ -31,4 +31,3 @@ def main() -> None:
     """Run a small local recommendation demo."""
     recommendations = build_demo_recommendations()
     print("Recommended items:", ", ".join(recommendations))
-

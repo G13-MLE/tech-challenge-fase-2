@@ -1,7 +1,7 @@
 """Project entry point."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def _ensure_local_src_path() -> None:

@@ -27,4 +27,3 @@ class ModelConfig:
         """Validate model configuration values."""
         if self.recommendation_limit < 1:
             raise ValueError("recommendation_limit must be positive")
-

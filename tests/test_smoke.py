@@ -13,7 +13,7 @@ def test_main_prints_expected_message() -> None:
         text=True,
     )
 
-    assert result.stdout.strip() == "Hello from fase2!"
+    assert result.stdout.strip() == "Recommended items: product-1, product-2, product-3"
 
 
 def test_docker_files_exist() -> None:

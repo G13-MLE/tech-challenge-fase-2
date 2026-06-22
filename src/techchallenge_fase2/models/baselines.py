@@ -42,7 +42,6 @@ class PopularityRecommender(RecommenderModel):
         recommendation_limit = resolve_limit(self._default_limit, limit)
         return self._ranked_items[:recommendation_limit]
 
-
 class RecentItemsRecommender(RecommenderModel):
     """Recommend the most recently observed unique items."""
 
@@ -70,4 +69,3 @@ class RecentItemsRecommender(RecommenderModel):
         _ = user_id
         recommendation_limit = resolve_limit(self._default_limit, limit)
         return self._ranked_items[:recommendation_limit]
-

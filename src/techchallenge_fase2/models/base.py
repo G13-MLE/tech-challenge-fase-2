@@ -28,4 +28,3 @@ class RecommenderModel(ABC):
         Returns:
             Ordered item identifiers.
         """
-

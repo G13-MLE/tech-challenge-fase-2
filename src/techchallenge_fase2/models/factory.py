@@ -80,4 +80,3 @@ class RecommenderModelFactory:
         """Monta a mensagem para tipos de modelo não registrados."""
         available_types = ", ".join(self.available_types()) or "none"
         return f"Unknown model type '{model_type}'. Available types: {available_types}."
-
