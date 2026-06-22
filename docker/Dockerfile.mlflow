@@ -1,0 +1,18 @@
+# =============================================================================
+# Dockerfile MLflow Server
+# Estende a imagem oficial do MLflow com drivers para PostgreSQL e S3/MinIO
+#
+# Build:
+#   docker build -f docker/Dockerfile.mlflow -t techchallenge-fase2-mlflow .
+#
+# Usado pelo docker/docker-compose.yml
+# =============================================================================
+
+FROM ghcr.io/mlflow/mlflow:v3.13.0
+
+USER root
+
+RUN pip install --no-cache-dir \
+    psycopg2-binary \
+    boto3 \
+    && rm -rf /root/.cache/pip
