@@ -3,37 +3,49 @@ name = "techchallenge-fase2"
 version = "0.1.0"
 description = "Sistema de recomendação de produtos com PyTorch, DVC e MLflow"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
-    "torch>=2.6.0",
-    "scikit-learn>=1.6.0",
-    "mlflow>=2.21.0",
-    "pandas>=2.3.3",
+    "altair>=6.2.1",
+    "dvc>=3.59.0",
+    "matplotlib>=3.10.9",
+    "mlflow>=3.13.0",
     "numpy>=2.2.0",
+    "pandas>=2.3.3",
+    "polars>=1.41.2",
+    "pyarrow>=18.0.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.8.0",
     "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.6.0",
+    "scipy>=1.17.1",
+    "torch>=2.6.0",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3.0",
-    "ruff>=0.11.0",
+    "ipykernel>=7.2.0",
+    "notebook>=7.5.6",
     "pre-commit>=4.2.0",
+    "pytest>=8.3.0",
+    "ruff>=0.15.17",
+    "matplotlib-inline>=0.2.2",
 ]
 
 [tool.uv]
 default-groups = ["dev"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 line-length = 88
 exclude = [
     ".git",
     ".venv",
     "__pycache__",
+    ".ipynb_checkpoints",
     "build",
     "dist",
+    "notebooks",
 ]
 
 [tool.ruff.lint]
@@ -49,3 +61,10 @@ ignore = []
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
