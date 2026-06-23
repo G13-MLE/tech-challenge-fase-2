@@ -13,6 +13,8 @@ wheels/
 .pre-commit-cache/
 .ruff_cache/
 .uv-cache/
+.pytest_cache/
+.pytest-tmp/
 
 # Dotenv
 *.env
@@ -29,11 +31,8 @@ data/**/*.tar.gz
 
 # Modelos versionados pelo DVC
 models/*
-!models/*.pt
-!models/*.pkl
-!models/*.csv
-!models/*.json
 !models/*.dvc
+!models/.gitkeep
 !models/.gitignore
 
 # MLflow
@@ -41,7 +40,6 @@ mlruns/
 mlartifacts/
 
 # DVC
-/.dvc/config
 /tmp/
 .dvc/tmp/
 .dvc/cache/

@@ -3,9 +3,11 @@
 PYTHON := uv run python
 UV_CACHE_DIR ?= .uv-cache
 PRE_COMMIT_HOME ?= .pre-commit-cache
+PYTEST_ADDOPTS ?= --basetemp=.pytest-tmp
 
 export UV_CACHE_DIR
 export PRE_COMMIT_HOME
+export PYTEST_ADDOPTS
 
 # Help padrão
 help:
