@@ -10,6 +10,9 @@ wheels/
 # Virtual environments
 .venv
 .env
+.pre-commit-cache/
+.ruff_cache/
+.uv-cache/
 
 # Dotenv
 *.env
@@ -54,6 +57,12 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Local notebooks and datasets
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+data/raw/
+jupyter-notebook*.log
 
 # Ignora o PDF da fase2, matenho ele no repo para rapida referencia com agentes de IA
 Tech Challenge Fase 02.pdf
