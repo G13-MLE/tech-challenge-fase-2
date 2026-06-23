@@ -39,7 +39,9 @@ REQUIRED_ENV_VARS: list[str] = [
 
 # Variáveis opcionais do .env (devem estar presentes, valor pode ser vazio)
 OPTIONAL_ENV_VARS: list[str] = [
-    "DVC_REMOTE_URL",
+    "DVC_ONEDRIVE_REMOTE_URL",
+    "KAGGLE_USERNAME",
+    "KAGGLE_KEY",
 ]
 
 # Mapeamento de nome de pacote para nome de importação
@@ -296,7 +298,7 @@ class DvcConfiguredCheck(EnvironmentCheck):
         return True, "projeto inicializado com DVC"
 
     def check_dvc_remote(self) -> tuple[bool, str]:
-        """Verifica se um remote DVC está configurado (se DVC_REMOTE_URL definido).
+        """Verifica o remote DVC (se DVC_ONEDRIVE_REMOTE_URL estiver definido).
 
         Returns:
             Tupla (remote_ok, mensagem).
@@ -306,7 +308,7 @@ class DvcConfiguredCheck(EnvironmentCheck):
             return True, "sem remote (self-contained)"
 
         env_dict = dict(dotenv_values(env_path))
-        remote_url = env_dict.get("DVC_REMOTE_URL", "").strip()
+        remote_url = env_dict.get("DVC_ONEDRIVE_REMOTE_URL", "").strip()
 
         if not remote_url:
             return True, "sem remote (self-contained)"
@@ -314,7 +316,10 @@ class DvcConfiguredCheck(EnvironmentCheck):
         ok, output = run_subprocess(["dvc", "remote", "list"])
         if ok and output:
             return True, f"remote configurado: {remote_url}"
-        return False, f"DVC_REMOTE_URL definido ({remote_url}) mas remote ausente"
+        return (
+            False,
+            f"DVC_ONEDRIVE_REMOTE_URL definido ({remote_url}) mas remote ausente",
+        )
 
     def check(self) -> tuple[bool, str]:
         """Verifica DVC instalado, inicializado e remote configurado."""

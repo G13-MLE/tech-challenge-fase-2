@@ -1,4 +1,4 @@
-.PHONY: help setup test lint verify format docker-build docker-build-gpu mlflow-up mlflow-down
+.PHONY: help sync setup test lint verify format data dvc-push dvc-pull dvc-status docker-build docker-build-gpu mlflow-up mlflow-down
 
 PYTHON := uv run python
 UV_CACHE_DIR ?= .uv-cache
@@ -12,12 +12,18 @@ help:
 	@echo "Tech Challenge Fase 2 - Comandos Disponíveis"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make setup         - Configurar ambiente (uv sync + pre-commit + .env)"
+	@echo "  make setup         - Configurar ambiente (uv sync + pre-commit + .env + DVC remote)"
 	@echo ""
 	@echo "Desenvolvimento:"
 	@echo "  make test          - Rodar testes (pytest)"
 	@echo "  make lint          - Verificar código com ruff"
 	@echo "  make format        - Formatar código com ruff"
+	@echo ""
+	@echo "Dados (DVC + OneDrive):"
+	@echo "  make data          - Baixar dataset RetailRocket do Kaggle"
+	@echo "  make dvc-push      - Enviar cache DVC ao remote OneDrive"
+	@echo "  make dvc-pull      - Baixar cache DVC do remote OneDrive"
+	@echo "  make dvc-status    - Verificar estado do versionamento DVC"
 	@echo ""
 	@echo "Docker (aplicação):"
 	@echo "  make docker-build     - Build imagem CPU (default)"
@@ -31,12 +37,32 @@ help:
 sync:
 	uv sync
 
+# Setup inicial do ambiente: .env, deps, pre-commit e remote DVC OneDrive.
 setup:
 	@echo "Configurando ambiente..."
 	@$(PYTHON) -c "from pathlib import Path; src = Path('.env.example'); dst = Path('.env'); created = not dst.exists(); dst.write_bytes(src.read_bytes()) if created else None; print('Criando .env a partir de .env.example...' if created else '.env já existe; mantendo arquivo local.')"
 	uv sync
 	@$(PYTHON) -c "import subprocess, sys; hooks_path = subprocess.run(['git', 'config', '--get', 'core.hooksPath'], capture_output=True, text=True).stdout.strip(); print('core.hooksPath configurado; instalando apenas ambientes do pre-commit.' if hooks_path else 'Instalando hook do pre-commit...'); command = [sys.executable, '-m', 'pre_commit', 'install-hooks'] if hooks_path else [sys.executable, '-m', 'pre_commit', 'install', '--install-hooks']; raise SystemExit(subprocess.call(command))"
+	@$(PYTHON) scripts/setup_environment.py
 	@echo "Setup concluído!"
+
+# Download do dataset RetailRocket via Kaggle (requer KAGGLE_USERNAME/KAGGLE_KEY no .env).
+data:
+	@echo "Baixando dataset RetailRocket para data/raw/ ..."
+	uv run python scripts/download_dataset.py
+	@echo "[OK] dataset disponivel em data/raw/."
+
+# Versionamento DVC: envia o cache ao remote OneDrive.
+dvc-push:
+	uv run dvc push
+
+# Versionamento DVC: baixa o cache do remote OneDrive e restaura os dados.
+dvc-pull:
+	uv run dvc pull
+
+# Status do versionamento DVC.
+dvc-status:
+	uv run dvc status
 
 test:
 	@echo "Executando testes..."
