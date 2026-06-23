@@ -280,7 +280,7 @@ class TestEnvFileCheck:
 
     def test_env_file_all_required_vars_present(self, tmp_path: Path) -> None:
         env_content = "\n".join(f"{var}=value" for var in REQUIRED_ENV_VARS)
-        env_content += "\nDVC_REMOTE_URL=\n"
+        env_content += "\nDVC_ONEDRIVE_REMOTE_URL=\n"
         env_file = tmp_path / ".env"
         env_file.write_text(env_content)
         check = EnvFileCheck()
@@ -291,7 +291,7 @@ class TestEnvFileCheck:
     def test_env_file_empty_required_var(self, tmp_path: Path) -> None:
         lines = [f"{var}=value" for var in REQUIRED_ENV_VARS]
         lines[0] = "ENV="  # Valor vazio para ENV
-        lines.append("DVC_REMOTE_URL=")
+        lines.append("DVC_ONEDRIVE_REMOTE_URL=")
         env_file = tmp_path / ".env"
         env_file.write_text("\n".join(lines) + "\n")
         check = EnvFileCheck()
@@ -338,7 +338,7 @@ class TestDvcConfiguredCheck:
         (tmp_path / ".dvc" / ".gitignore").write_text("/config.local\n/tmp\n/cache\n")
         (tmp_path / ".dvcignore").write_text("# dvcignore\n")
         env_file = tmp_path / ".env"
-        env_file.write_text("DVC_REMOTE_URL=\n")
+        env_file.write_text("DVC_ONEDRIVE_REMOTE_URL=\n")
         with (
             patch("scripts.validate_env.PROJECT_ROOT", tmp_path),
             patch("scripts.validate_env.subprocess.run") as mock_run,
@@ -353,7 +353,7 @@ class TestDvcConfiguredCheck:
         (tmp_path / ".dvc" / ".gitignore").write_text("/config.local\n/tmp\n/cache\n")
         (tmp_path / ".dvcignore").write_text("# dvcignore\n")
         env_file = tmp_path / ".env"
-        env_file.write_text("DVC_REMOTE_URL=s3://bucket/dvc\n")
+        env_file.write_text("DVC_ONEDRIVE_REMOTE_URL=s3://bucket/dvc\n")
         with (
             patch("scripts.validate_env.PROJECT_ROOT", tmp_path),
             patch("scripts.validate_env.subprocess.run") as mock_run,
