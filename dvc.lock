@@ -105,8 +105,8 @@ stages:
       size: 4042
     - path: src/techchallenge_fase2/pipeline/training.py
       hash: md5
-      md5: c35688e93e262ab3b5412b0273e4acfa
-      size: 7632
+      md5: 7212380b4ff46ccb931c5156d8351042
+      size: 8609
     params:
       params.yaml:
         evaluation.top_k: 5
@@ -147,8 +147,8 @@ stages:
       size: 4042
     - path: src/techchallenge_fase2/pipeline/evaluation.py
       hash: md5
-      md5: 99aa548f441de8006398a424cd6aef3a
-      size: 5952
+      md5: ebc868373a1e32e66de38d9316f7ea72
+      size: 7081
     - path: src/techchallenge_fase2/pipeline/metrics.py
       hash: md5
       md5: d5c12bcbebe3ec59975a330c41c0d103
@@ -161,5 +161,5 @@ stages:
     outs:
     - path: metrics/recommendation_metrics.json
       hash: md5
-      md5: 938d67bbd14ab8e91aaf6b40d5f7edba
-      size: 147
+      md5: 64a3686a657e0cdddb158ffd9f23f9a1
+      size: 146

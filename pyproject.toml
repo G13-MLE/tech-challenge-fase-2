@@ -70,6 +70,7 @@ indent-style = "space"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "src"]
+addopts = ["-p", "no:cacheprovider"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

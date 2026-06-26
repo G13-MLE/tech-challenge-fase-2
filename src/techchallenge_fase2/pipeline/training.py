@@ -18,6 +18,9 @@ from techchallenge_fase2.models import ModelConfig, ModelType, RecommenderModelF
 from techchallenge_fase2.models.embedding import TorchEmbeddingRecommender
 from techchallenge_fase2.pipeline.config import PipelineParams, load_params
 
+TrainingRow = tuple[int, int, float, float]
+PositiveRow = tuple[int, int, float]
+
 
 @dataclass(frozen=True, slots=True)
 class TrainingTensors:
@@ -27,6 +30,16 @@ class TrainingTensors:
     items: torch.Tensor
     labels: torch.Tensor
     weights: torch.Tensor
+
+
+@dataclass(frozen=True, slots=True)
+class NegativeSamplingContext:
+    """Context shared while sampling implicit-feedback negatives."""
+
+    seen_items: dict[int, set[int]]
+    num_items: int
+    negative_samples: int
+    rng: np.random.Generator
 
 
 def parse_args() -> argparse.Namespace:
@@ -104,13 +117,18 @@ def build_training_tensors(
     rng = np.random.default_rng(params.training.random_seed)
     seen_items = build_seen_items(frame)
     positive = frame[["user_index", "item_index", "event_weight"]].drop_duplicates()
-    rows = build_rows(
-        positive,
+    context = NegativeSamplingContext(
         seen_items,
         num_items,
         params.training.negative_samples,
         rng,
     )
+    rows = build_rows(positive, context)
+    return rows_to_tensors(rows)
+
+
+def rows_to_tensors(rows: list[TrainingRow]) -> TrainingTensors:
+    """Convert sampled training rows to tensors."""
     array = np.asarray(rows, dtype=np.float32)
     return TrainingTensors(
         users=torch.as_tensor(array[:, 0], dtype=torch.long),
@@ -122,25 +140,49 @@ def build_training_tensors(
 
 def build_rows(
     positive: pd.DataFrame,
-    seen_items: dict[int, set[int]],
+    context: NegativeSamplingContext,
+) -> list[TrainingRow]:
+    """Create labeled rows with sampled negatives."""
+    rows: list[TrainingRow] = []
+    for row in positive.itertuples(index=False, name=None):
+        rows.extend(build_user_rows_from_positive(row, context))
+    return rows
+
+
+def build_user_rows_from_positive(
+    row: PositiveRow,
+    context: NegativeSamplingContext,
+) -> list[TrainingRow]:
+    """Create training rows from one positive interaction tuple."""
+    user = int(row[0])
+    return build_user_rows(
+        user,
+        int(row[1]),
+        float(row[2]),
+        context.seen_items[user],
+        context.num_items,
+        context.negative_samples,
+        context.rng,
+    )
+
+
+def build_user_rows(
+    user: int,
+    item: int,
+    weight: float,
+    user_items: set[int],
     num_items: int,
     negative_samples: int,
     rng: np.random.Generator,
-) -> list[tuple[int, int, float, float]]:
-    """Create labeled rows with sampled negatives."""
-    rows: list[tuple[int, int, float, float]] = []
-    for user_index, item_index, weight in positive.itertuples(index=False):
-        user = int(user_index)
-        rows.append((user, int(item_index), 1.0, float(weight)))
-        negative_rows = build_negative_rows(
-            user,
-            seen_items[user],
-            num_items,
-            negative_samples,
-            rng,
-        )
-        rows.extend(negative_rows)
-    return rows
+) -> list[TrainingRow]:
+    """Create one positive row and its sampled negatives."""
+    return [(user, item, 1.0, weight)] + build_negative_rows(
+        user,
+        user_items,
+        num_items,
+        negative_samples,
+        rng,
+    )
 
 
 def build_negative_rows(
@@ -149,7 +191,7 @@ def build_negative_rows(
     num_items: int,
     negative_samples: int,
     rng: np.random.Generator,
-) -> list[tuple[int, int, float, float]]:
+) -> list[TrainingRow]:
     """Create sampled negative rows for one user."""
     return [
         (user, sample_negative_item(user_items, num_items, rng), 0.0, 1.0)

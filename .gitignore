@@ -40,6 +40,7 @@ mlruns/
 mlartifacts/
 
 # DVC
+/.dvc/config
 /tmp/
 .dvc/tmp/
 .dvc/cache/

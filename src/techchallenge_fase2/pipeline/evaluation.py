@@ -75,21 +75,44 @@ def build_seen_items(frame: pd.DataFrame) -> dict[int, set[int]]:
     return seen
 
 
+def build_candidate_items(frame: pd.DataFrame) -> set[int]:
+    """Build the item catalog learned during training."""
+    return set(frame["item_index"].astype("int64").unique().tolist())
+
+
+def filter_evaluable_relevance(
+    relevance: dict[int, set[int]],
+    seen: dict[int, set[int]],
+    candidate_items: set[int],
+) -> dict[int, set[int]]:
+    """Keep only warm-start users and recommendable relevant items."""
+    filtered: dict[int, set[int]] = {}
+    for user, relevant_items in relevance.items():
+        if user not in seen:
+            continue
+        available_items = (relevant_items & candidate_items) - seen[user]
+        if available_items:
+            filtered[user] = available_items
+    return filtered
+
+
 def recommend_for_user(
     model: EmbeddingScoringModel,
     user: int,
-    num_items: int,
+    candidate_items: set[int],
     excluded: set[int],
     top_k: int,
 ) -> list[int]:
     """Recommend top items for one encoded user."""
-    item_ids = torch.arange(num_items, dtype=torch.long)
-    user_ids = torch.full((num_items,), user, dtype=torch.long)
+    candidates = sorted(candidate_items - excluded)
+    if not candidates:
+        return []
+    item_ids = torch.as_tensor(candidates, dtype=torch.long)
+    user_ids = torch.full((len(candidates),), user, dtype=torch.long)
     with torch.no_grad():
         scores = model(user_ids, item_ids).numpy()
-    scores[list(excluded)] = -np.inf
-    top_items = np.argsort(scores)[::-1][:top_k]
-    return [int(item) for item in top_items]
+    top_indexes = np.argsort(scores)[::-1][:top_k]
+    return [int(candidates[index]) for index in top_indexes]
 
 
 def evaluate_users(
@@ -99,10 +122,18 @@ def evaluate_users(
     params: PipelineParams,
 ) -> dict[str, float]:
     """Evaluate recommendations for selected users."""
-    relevance = build_relevance(test)
     seen = build_seen_items(train)
+    candidate_items = build_candidate_items(train)
+    relevance = filter_evaluable_relevance(
+        build_relevance(test),
+        seen,
+        candidate_items,
+    )
     users = select_users(relevance, params.evaluation.max_users)
-    scores = [score_user(model, user, relevance, seen, params) for user in users]
+    scores = [
+        score_user(model, user, relevance, seen, candidate_items, params)
+        for user in users
+    ]
     return summarize_scores(scores, params.evaluation.top_k, len(users))
 
 
@@ -111,23 +142,33 @@ def score_user(
     user: int,
     relevance: dict[int, set[int]],
     seen: dict[int, set[int]],
+    candidate_items: set[int],
     params: PipelineParams,
 ) -> dict[str, float]:
     """Score recommendations for one user."""
+    top_k = params.evaluation.top_k
     recommended = recommend_for_user(
         model,
         user,
-        num_items=int(model.item_embeddings.num_embeddings),
+        candidate_items=candidate_items,
         excluded=seen.get(user, set()),
-        top_k=params.evaluation.top_k,
+        top_k=top_k,
     )
-    relevant = relevance[user]
+    return compute_scores(recommended, relevance[user], top_k)
+
+
+def compute_scores(
+    recommended: list[int],
+    relevant: set[int],
+    top_k: int,
+) -> dict[str, float]:
+    """Compute all ranking metrics for one user."""
     return {
-        "hit_rate": hit_rate_at_k(recommended, relevant, params.evaluation.top_k),
-        "map": map_at_k(recommended, relevant, params.evaluation.top_k),
-        "ndcg": ndcg_at_k(recommended, relevant, params.evaluation.top_k),
-        "precision": precision_at_k(recommended, relevant, params.evaluation.top_k),
-        "recall": recall_at_k(recommended, relevant, params.evaluation.top_k),
+        "hit_rate": hit_rate_at_k(recommended, relevant, top_k),
+        "map": map_at_k(recommended, relevant, top_k),
+        "ndcg": ndcg_at_k(recommended, relevant, top_k),
+        "precision": precision_at_k(recommended, relevant, top_k),
+        "recall": recall_at_k(recommended, relevant, top_k),
     }
 
 

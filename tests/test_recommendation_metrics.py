@@ -1,5 +1,6 @@
 """Unit tests for recommendation metrics."""
 
+from techchallenge_fase2.pipeline.evaluation import filter_evaluable_relevance
 from techchallenge_fase2.pipeline.metrics import (
     hit_rate_at_k,
     map_at_k,
@@ -29,3 +30,14 @@ def test_metrics_return_zero_without_relevant_items() -> None:
     assert recall_at_k(recommended, relevant, top_k=3) == 0.0
     assert map_at_k(recommended, relevant, top_k=3) == 0.0
     assert ndcg_at_k(recommended, relevant, top_k=3) == 0.0
+
+
+def test_filter_evaluable_relevance_keeps_warm_start_cases() -> None:
+    """Evaluation keeps only users and items learned during training."""
+    relevance = {1: {10, 11}, 2: {12}, 3: {13}}
+    seen = {1: {10}, 3: {99}}
+    candidate_items = {10, 11, 12}
+
+    filtered = filter_evaluable_relevance(relevance, seen, candidate_items)
+
+    assert filtered == {1: {11}}
