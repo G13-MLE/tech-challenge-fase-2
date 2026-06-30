@@ -9,6 +9,10 @@ from techchallenge_fase2.models.baselines import (
     RecentItemsRecommender,
 )
 from techchallenge_fase2.models.config import ModelConfig, ModelType
+from techchallenge_fase2.models.ncf import (
+    NeuralCollaborativeFiltering,
+    NeuralRecommender,
+)
 
 ModelKey = ModelType | str
 ModelCreator = Callable[[ModelConfig], RecommenderModel]
@@ -33,6 +37,12 @@ def create_recent_items_model(config: ModelConfig) -> RecommenderModel:
     return RecentItemsRecommender(default_limit=config.recommendation_limit)
 
 
+def create_neural_ncf_model(config: ModelConfig) -> RecommenderModel:
+    """Cria o recomendador neural (NCF) a partir da config."""
+    ncf = NeuralCollaborativeFiltering(config.neural_config())
+    return NeuralRecommender(ncf)
+
+
 class RecommenderModelFactory:
     """Create recommendation models without coupling clients to classes."""
 
@@ -46,6 +56,7 @@ class RecommenderModelFactory:
         factory = cls()
         factory.register(ModelType.POPULARITY, create_popularity_model)
         factory.register(ModelType.RECENT_ITEMS, create_recent_items_model)
+        factory.register(ModelType.NEURAL_NCF, create_neural_ncf_model)
         return factory
 
     def register(self, model_type: ModelKey, creator: ModelCreator) -> None:
