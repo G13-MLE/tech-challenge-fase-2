@@ -30,8 +30,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_checkpoint(path: Path) -> dict[str, Any]:
-    """Load a PyTorch checkpoint."""
-    return torch.load(path, map_location="cpu")
+    """Load a PyTorch checkpoint safely.
+
+    Usa ``weights_only=True`` para impedir execução arbitrária de pickle ao
+    desserializar checkpoints compartilhados pelo DVC remote.
+    """
+    return torch.load(path, map_location="cpu", weights_only=True)
 
 
 def load_model(checkpoint: dict[str, Any]) -> EmbeddingScoringModel:

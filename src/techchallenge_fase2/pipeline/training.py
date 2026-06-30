@@ -99,13 +99,22 @@ def sample_negative_item(
     num_items: int,
     rng: np.random.Generator,
 ) -> int:
-    """Sample one item that the user has not interacted with."""
-    if len(user_items) >= num_items:
-        return int(rng.integers(0, num_items))
-    candidate = int(rng.integers(0, num_items))
-    while candidate in user_items:
-        candidate = int(rng.integers(0, num_items))
-    return candidate
+    """Sample one item that the user has not interacted with.
+
+    Usa a diferença de conjuntos em vez de rejeição amostral, evitando laço
+    infinito em catálogos parcialmente saturados e nunca retorna um item
+    positivo disfarçado de negativo.
+
+    Raises:
+        ValueError: Quando o usuário já interagiu com todos os itens do
+            catálogo (não existe negativo válido).
+    """
+    missing = list(set(range(num_items)) - user_items)
+    if not missing:
+        raise ValueError(
+            "Nao ha item negativo disponivel: usuario consumiu todo o catalogo",
+        )
+    return int(rng.choice(missing))
 
 
 def build_training_tensors(
@@ -192,7 +201,13 @@ def build_negative_rows(
     negative_samples: int,
     rng: np.random.Generator,
 ) -> list[TrainingRow]:
-    """Create sampled negative rows for one user."""
+    """Create sampled negative rows for one user.
+
+    Ignora o usuário quando ele já interagiu com todos os itens do catálogo,
+    evitando rotular um positivo como negativo e corromper o treino.
+    """
+    if len(user_items) >= num_items:
+        return []
     return [
         (user, sample_negative_item(user_items, num_items, rng), 0.0, 1.0)
         for _ in range(negative_samples)

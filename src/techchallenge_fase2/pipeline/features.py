@@ -71,17 +71,33 @@ def split_frame(
     train_ratio: float,
     validation_ratio: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split interactions chronologically into train, validation and test."""
+    """Split interactions chronologically into train, validation and test.
+
+    Raises:
+        ValueError: Quando o frame é pequeno demais para gerar splits
+            não vazios, o que resultaria em parquets vazios e mapeamentos
+            sem entidades nas próximas etapas do pipeline.
+    """
     total_rows = len(frame)
+    if total_rows < 3:
+        raise ValueError(
+            f"Frame pequeno demais para split: {total_rows} linhas; "
+            "aumente preprocess.sample_size",
+        )
     train_end = max(1, int(total_rows * train_ratio))
     validation_end = int(total_rows * (train_ratio + validation_ratio))
     validation_end = max(train_end + 1, validation_end)
     validation_end = min(validation_end, total_rows - 1)
-    return (
+    train, validation, test = (
         frame.iloc[:train_end],
         frame.iloc[train_end:validation_end],
         frame.iloc[validation_end:],
     )
+    if train.empty or validation.empty or test.empty:
+        raise ValueError(
+            "Split produziu partição vazia; aumente preprocess.sample_size",
+        )
+    return train, validation, test
 
 
 def save_outputs(
