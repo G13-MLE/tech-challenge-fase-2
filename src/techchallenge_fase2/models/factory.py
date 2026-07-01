@@ -6,6 +6,7 @@ from typing import Self
 from techchallenge_fase2.models.base import RecommenderModel
 from techchallenge_fase2.models.baselines import (
     PopularityRecommender,
+    RandomRecommender,
     RecentItemsRecommender,
 )
 from techchallenge_fase2.models.config import ModelConfig, ModelType
@@ -44,6 +45,11 @@ def create_torch_embedding_model(config: ModelConfig) -> RecommenderModel:
     )
 
 
+def create_random_model(config: ModelConfig) -> RecommenderModel:
+    """Cria o recomendador aleatório (lower bound)."""
+    return RandomRecommender(default_limit=config.recommendation_limit)
+
+
 class RecommenderModelFactory:
     """Create recommendation models without coupling clients to classes."""
 
@@ -58,6 +64,7 @@ class RecommenderModelFactory:
         factory.register(ModelType.POPULARITY, create_popularity_model)
         factory.register(ModelType.RECENT_ITEMS, create_recent_items_model)
         factory.register(ModelType.TORCH_EMBEDDING, create_torch_embedding_model)
+        factory.register(ModelType.RANDOM, create_random_model)
         return factory
 
     def register(self, model_type: ModelKey, creator: ModelCreator) -> None:

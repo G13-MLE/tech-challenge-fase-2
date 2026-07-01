@@ -8,14 +8,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Environment(str, Enum):
-    """Tipos de ambiente suportados pela aplicacao."""
+    """Tipos de ambiente suportados pela aplicação."""
 
     DEVELOPMENT = "development"
     PRODUCTION = "production"
 
 
 class Settings(BaseSettings):
-    """Configuracoes da aplicacao carregadas de variaveis de ambiente."""
+    """Configurações da aplicação carregadas de variáveis de ambiente."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     batch_size: int = Field(default=64, gt=0)
     epochs: int = Field(default=10, gt=0)
     embedding_dim: int = Field(default=64, gt=0)
+    test_ratio: float = Field(default=0.2, gt=0, lt=1)
+    recommendation_limit: int = Field(default=20, gt=0)
 
     @field_validator("mlflow_tracking_uri")
     @classmethod
@@ -55,9 +57,9 @@ class Settings(BaseSettings):
     @field_validator("mlflow_experiment_name")
     @classmethod
     def validate_mlflow_experiment_name(cls, value: str) -> str:
-        """Garante que o nome do experimento nao esteja vazio."""
+        """Garante que o nome do experimento não esteja vazio."""
         if not value.strip():
-            msg = "MLFLOW_EXPERIMENT_NAME nao pode ser vazio"
+            msg = "MLFLOW_EXPERIMENT_NAME não pode ser vazio"
             raise ValueError(msg)
         return value
 
