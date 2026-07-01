@@ -18,8 +18,8 @@ Arquivos esperados:
 - `item_properties_part2.csv`
 - `category_tree.csv`
 
-Por padrão, o notebook procura os CSVs em `data/raw/retailrocket/`. Se os dados
-estiverem em outro lugar, informe o caminho pela variável `RETAILROCKET_DATA_DIR`.
+Por padrão, o notebook procura os CSVs em `data/raw/`. Se os dados estiverem em
+outro lugar, informe o caminho pela variável `RETAILROCKET_DATA_DIR`.
 
 PowerShell:
 
@@ -46,46 +46,41 @@ Notebooks da análise:
 - `notebooks/03_retailrocket_feature_flow_analysis.ipynb`: fluxo entre tabelas,
   plano de join temporal e schema candidato para a tabela de treino.
 
-Os CSVs brutos não devem ser commitados no Git. Eles serão versionados em etapa
-posterior com DVC. Em Docker, esse mesmo diretório deve ser disponibilizado ao
-container por volume, `dvc pull` ou etapa do pipeline.
+Os CSVs brutos não devem ser commitados no Git. Eles são versionados com DVC.
 
 ## Versionamento de Dados (DVC + OneDrive)
 
-O dataset RetailRocket (~1.4 GB) é versionado com DVC e armazenado em uma
-pasta compartilhada do OneDrive (remote "local"). Os arquivos `.dvc` são
-commitados no Git como metadado de versão; o conteúdo binário fica no cache
-do DVC sincronizado pelo cliente OneDrive.
+O dataset RetailRocket é versionado com DVC e armazenado em uma pasta
+compartilhada do OneDrive. Os arquivos `.dvc` são commitados no Git como
+metadados de versão; o conteúdo binário fica no cache do DVC sincronizado pelo
+cliente OneDrive.
 
 ### Setup
 
-1. Criar (uma vez, pela equipe) uma pasta compartilhada no OneDrive, ex.:
-   `techchallenge-fase2/dvcstore`. Todos os membros devem sincronizá-la
-   localmente via cliente OneDrive.
-
+1. Criar uma pasta compartilhada no OneDrive, por exemplo
+   `techchallenge-fase2/dvcstore`, e sincronizá-la localmente.
 2. Copiar `.env.example` para `.env` e preencher:
-   - `DVC_ONEDRIVE_REMOTE_URL`: caminho local da pasta sincronizada
-     (ex.: `/Users/<usuario>/OneDrive - FIAP/techchallenge-fase2/dvcstore`).
+   - `DVC_ONEDRIVE_REMOTE_URL`: caminho local da pasta sincronizada.
    - `KAGGLE_USERNAME` e `KAGGLE_KEY`: token criado em
-     https://www.kaggle.com/settings -> API -> Create New Token.
+     https://www.kaggle.com/settings.
+3. Executar o setup:
 
-3. Executar o setup (instala deps, pre-commit e configura o remote DVC):
-   ```bash
-   make setup
-   ```
+```bash
+make setup
+```
 
 ### Obter o dataset
 
 ```bash
-make data        # baixa do Kaggle para data/raw/ via API
-dvc add data/raw # versiona com DVC (gera data/raw.dvc + data/raw/.gitignore)
-git add data/raw.dvc data/raw/.gitignore
+make data
+dvc add data/raw
+git add data/raw.dvc data/.gitignore
 ```
 
-### Compartilhar / restaurar via OneDrive
+### Compartilhar ou restaurar via OneDrive
 
 ```bash
-make dvc-push    # envia o cache do DVC para a pasta do OneDrive
-make dvc-pull    # baixa o cache do OneDrive e restaura data/raw/
-make dvc-status  # verifica o estado do versionamento
+make dvc-push
+make dvc-pull
+make dvc-status
 ```

@@ -1,0 +1,35 @@
+paths:
+  raw_events: data/raw/events.csv
+  processed_interactions: data/processed/interactions.parquet
+  train_features: data/features/train.parquet
+  validation_features: data/features/validation.parquet
+  test_features: data/features/test.parquet
+  mappings: data/features/mappings.json
+  dataset_stats: data/features/dataset_stats.json
+  model_checkpoint: models/torch_embedding_recommender.pt
+  metrics: metrics/recommendation_metrics.json
+
+preprocess:
+  sample_size: 50000
+  random_seed: 42
+
+features:
+  train_ratio: 0.70
+  validation_ratio: 0.15
+  session_gap_minutes: 30
+  event_weights:
+    view: 1.0
+    addtocart: 3.0
+    transaction: 5.0
+
+training:
+  batch_size: 512
+  epochs: 2
+  embedding_dim: 32
+  learning_rate: 0.001
+  negative_samples: 1
+  random_seed: 42
+
+evaluation:
+  top_k: 5
+  max_users: 200

@@ -10,8 +10,12 @@ Execucao:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from dotenv import dotenv_values
@@ -114,19 +118,45 @@ def verify_download(raw_dir: Path) -> None:
     print("[OK] dataset baixado e verificado.")
 
 
+@contextmanager
+def kaggle_config_env(username: str, key: str) -> Iterator[None]:
+    """Expoem credenciais Kaggle via kaggle.json temporario.
+
+    Escreve ``kaggle.json`` em um diretório temporário com permissão 0600 e
+    aponta ``KAGGLE_CONFIG_DIR`` para ele, mantendo as credenciais fora de
+    ``os.environ`` (evitando vazamento para subprocessos e dumps de ambiente).
+    Remove o arquivo ao sair do contexto.
+    """
+    with tempfile.TemporaryDirectory(prefix="kaggle-cfg-") as tmpdir:
+        config_path = Path(tmpdir) / "kaggle.json"
+        config_path.write_text(
+            json.dumps({"username": username, "key": key}),
+            encoding="utf-8",
+        )
+        config_path.chmod(0o600)
+        previous_config_dir = os.environ.get("KAGGLE_CONFIG_DIR")
+        os.environ["KAGGLE_CONFIG_DIR"] = tmpdir
+        os.environ.pop("KAGGLE_USERNAME", None)
+        os.environ.pop("KAGGLE_KEY", None)
+        try:
+            yield
+        finally:
+            if previous_config_dir is None:
+                os.environ.pop("KAGGLE_CONFIG_DIR", None)
+            else:
+                os.environ["KAGGLE_CONFIG_DIR"] = previous_config_dir
+
+
 def main() -> None:
     """Orquestra o download do dataset RetailRocket de forma idempotente."""
     username, key = load_kaggle_credentials()
-    # A lib kaggle le as credenciais do ambiente.
-    os.environ["KAGGLE_USERNAME"] = username
-    os.environ["KAGGLE_KEY"] = key
-
     raw_dir = ensure_raw_dir()
     if dataset_already_downloaded(raw_dir):
         print("[SKIP] dataset ja presente em data/raw/. Nada a fazer.")
         return
 
-    download_dataset(raw_dir)
+    with kaggle_config_env(username, key):
+        download_dataset(raw_dir)
     verify_download(raw_dir)
 
 
