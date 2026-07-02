@@ -31,9 +31,9 @@ data/**/*.tar.gz
 
 # Modelos versionados pelo DVC
 models/*
-!models/*.dvc
 !models/.gitkeep
 !models/.gitignore
+!models/checkpoints/.gitignore
 
 # MLflow
 mlruns/

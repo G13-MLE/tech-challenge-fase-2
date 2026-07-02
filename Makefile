@@ -1,4 +1,4 @@
-.PHONY: help sync setup test lint verify format data dvc-push dvc-pull dvc-status docker-build docker-build-gpu mlflow-up mlflow-down
+.PHONY: help sync setup test lint verify format data train pipeline dvc-push dvc-pull dvc-status docker-build docker-build-gpu mlflow-up mlflow-down
 
 PYTHON := uv run python
 UV_CACHE_DIR ?= .uv-cache
@@ -19,6 +19,8 @@ help:
 	@echo "  make lint          - Verificar código com ruff"
 	@echo "  make format        - Formatar código com ruff"
 	@echo "  make data          - Baixar dataset RetailRocket via Kaggle"
+	@echo "  make train         - Reexecutar o stage de treino via DVC (dvc repro train)"
+	@echo "  make pipeline      - Reexecutar o pipeline DVC completo (dvc repro)"
 	@echo "  make dvc-push      - Enviar cache DVC ao remote"
 	@echo "  make dvc-pull      - Restaurar dados pelo DVC"
 	@echo "  make dvc-status    - Verificar status DVC"
@@ -55,6 +57,16 @@ data:
 	@echo "Baixando dataset RetailRocket para data/raw/ ..."
 	uv run python scripts/download_dataset.py
 	@echo "[OK] dataset disponivel em data/raw/."
+
+# Reexecuta apenas o stage de treino (dvc repro train).
+train:
+	@echo "Reexecutando stage de treino do pipeline DVC..."
+	uv run dvc repro train
+
+# Reexecuta o pipeline DVC completo (preprocess, feature_eng, train, evaluate).
+pipeline:
+	@echo "Reexecutando pipeline DVC completo..."
+	uv run dvc repro
 
 # Versionamento DVC: envia o cache ao remote OneDrive.
 dvc-push:
