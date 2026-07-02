@@ -1,7 +1,13 @@
 """Configuration objects for recommendation models."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from techchallenge_fase2.models.ncf import NCFConfig
 
 
 class ModelType(StrEnum):
@@ -11,6 +17,7 @@ class ModelType(StrEnum):
     RECENT_ITEMS = "recent_items"
     TORCH_EMBEDDING = "torch_embedding"
     RANDOM = "random"
+    NEURAL_NCF = "neural_ncf"
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,3 +48,24 @@ class ModelConfig:
             raise ValueError("num_items must be positive")
         if self.embedding_dim < 1:
             raise ValueError("embedding_dim must be positive")
+
+    def neural_config(self) -> "NCFConfig":
+        """Constroi a configuracao do NCF a partir deste ModelConfig.
+
+        Returns:
+            NCFConfig valido para instanciar o modelo neural (GMF + MLP).
+
+        Raises:
+            ValueError: Quando num_users/num_items nao sao positivos.
+        """
+        from techchallenge_fase2.models.ncf import (
+            NCFConfig,
+        )  # import tardio evita ciclo
+
+        if self.num_users <= 0 or self.num_items <= 0:
+            raise ValueError("num_users e num_items devem ser positivos para o NCF")
+        return NCFConfig(
+            num_users=self.num_users,
+            num_items=self.num_items,
+            embedding_dim=self.embedding_dim,
+        )
