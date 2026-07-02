@@ -55,4 +55,4 @@ def test_build_negative_rows_returns_only_non_seen_items() -> None:
     )
     assert len(rows) == 8
     assert all(row[1] not in user_items for row in rows)
-    assert all(row[0] == 7 and row[2] == 0.0 and row[3] == 1.0 for row in rows)
+    assert all(row[0] == 7 and row[2] == 0.0 for row in rows)

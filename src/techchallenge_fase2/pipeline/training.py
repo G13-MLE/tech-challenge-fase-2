@@ -1,4 +1,10 @@
-"""Train the PyTorch embedding recommender."""
+"""Train the PyTorch neural recommender (NCF) for the DVC pipeline.
+
+Orquestra a leitura das features de treino/validacao, a amostragem negativa,
+a instanciacao do NCF via Factory e o loop de treinamento delegando ao
+``Trainer`` do modulo ``techchallenge_fase2.training``, que aplica early
+stopping, valida por AUC a cada epoca e persiste checkpoints best/last.
+"""
 
 from __future__ import annotations
 
@@ -11,35 +17,24 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
 
-from techchallenge_fase2.models import ModelConfig, ModelType, RecommenderModelFactory
-from techchallenge_fase2.models.embedding import TorchEmbeddingRecommender
+from techchallenge_fase2.data import InteractionData
+from techchallenge_fase2.models.config import ModelConfig
+from techchallenge_fase2.models.ncf import NeuralCollaborativeFiltering
 from techchallenge_fase2.pipeline.config import PipelineParams, load_params
+from techchallenge_fase2.training import Trainer, TrainingConfig
 
-TrainingRow = tuple[int, int, float, float]
-PositiveRow = tuple[int, int, float]
+LabelRow = tuple[int, int, float]
+PositiveRow = tuple[int, int]
 
 
 @dataclass(frozen=True, slots=True)
-class TrainingTensors:
-    """Tensor bundle used by the training loop."""
+class LabeledTensors:
+    """Tensores rotulados para alimentar o loop de treino do NCF."""
 
     users: torch.Tensor
     items: torch.Tensor
     labels: torch.Tensor
-    weights: torch.Tensor
-
-
-@dataclass(frozen=True, slots=True)
-class NegativeSamplingContext:
-    """Context shared while sampling implicit-feedback negatives."""
-
-    seen_items: dict[int, set[int]]
-    num_items: int
-    negative_samples: int
-    rng: np.random.Generator
 
 
 def parse_args() -> argparse.Namespace:
@@ -67,23 +62,29 @@ def load_entity_counts(path: Path) -> tuple[int, int]:
     return len(mappings["user_ids"]), len(mappings["item_ids"])
 
 
-def create_recommender(
-    params: PipelineParams,
-    users: int,
-    items: int,
-) -> TorchEmbeddingRecommender:
-    """Create the neural recommender through the project factory."""
+def create_ncf_model(
+    params: PipelineParams, users: int, items: int
+) -> NeuralCollaborativeFiltering:
+    """Create the NCF model from pipeline parameters."""
     config = ModelConfig(
-        model_type=ModelType.TORCH_EMBEDDING,
-        recommendation_limit=params.evaluation.top_k,
         num_users=users,
         num_items=items,
         embedding_dim=params.training.embedding_dim,
+        recommendation_limit=params.evaluation.top_k,
     )
-    model = RecommenderModelFactory.default().create(config)
-    if not isinstance(model, TorchEmbeddingRecommender):
-        raise TypeError("Factory did not return TorchEmbeddingRecommender")
-    return model
+    return NeuralCollaborativeFiltering(config.neural_config())
+
+
+def build_training_config(params: PipelineParams) -> TrainingConfig:
+    """Build the TrainerConfig from the pipeline parameters."""
+    return TrainingConfig(
+        learning_rate=params.training.learning_rate,
+        batch_size=params.training.batch_size,
+        epochs=params.training.epochs,
+        patience=params.training.patience,
+        min_delta=params.training.min_delta,
+        device="cpu",
+    )
 
 
 def build_seen_items(frame: pd.DataFrame) -> dict[int, set[int]]:
@@ -95,19 +96,17 @@ def build_seen_items(frame: pd.DataFrame) -> dict[int, set[int]]:
 
 
 def sample_negative_item(
-    user_items: set[int],
-    num_items: int,
-    rng: np.random.Generator,
+    user_items: set[int], num_items: int, rng: np.random.Generator
 ) -> int:
     """Sample one item that the user has not interacted with.
 
-    Usa a diferença de conjuntos em vez de rejeição amostral, evitando laço
-    infinito em catálogos parcialmente saturados e nunca retorna um item
-    positivo disfarçado de negativo.
+    Usa a diferenca de conjuntos em vez de rejeicao amostral, evitando laco
+    infinito em catalogos parcialmente saturados e nunca retorna um item
+    positivo disfarcado de negativo.
 
     Raises:
-        ValueError: Quando o usuário já interagiu com todos os itens do
-            catálogo (não existe negativo válido).
+        ValueError: Quando o usuario ja interagiu com todos os itens do
+            catalogo (nao existe negativo valido).
     """
     missing = list(set(range(num_items)) - user_items)
     if not missing:
@@ -117,185 +116,132 @@ def sample_negative_item(
     return int(rng.choice(missing))
 
 
-def build_training_tensors(
-    frame: pd.DataFrame,
-    params: PipelineParams,
-    num_items: int,
-) -> TrainingTensors:
-    """Build positive and negative examples for implicit feedback."""
-    rng = np.random.default_rng(params.training.random_seed)
-    seen_items = build_seen_items(frame)
-    positive = frame[["user_index", "item_index", "event_weight"]].drop_duplicates()
-    context = NegativeSamplingContext(
-        seen_items,
-        num_items,
-        params.training.negative_samples,
-        rng,
-    )
-    rows = build_rows(positive, context)
-    return rows_to_tensors(rows)
-
-
-def rows_to_tensors(rows: list[TrainingRow]) -> TrainingTensors:
-    """Convert sampled training rows to tensors."""
-    array = np.asarray(rows, dtype=np.float32)
-    return TrainingTensors(
-        users=torch.as_tensor(array[:, 0], dtype=torch.long),
-        items=torch.as_tensor(array[:, 1], dtype=torch.long),
-        labels=torch.as_tensor(array[:, 2], dtype=torch.float32),
-        weights=torch.as_tensor(array[:, 3], dtype=torch.float32),
-    )
-
-
-def build_rows(
-    positive: pd.DataFrame,
-    context: NegativeSamplingContext,
-) -> list[TrainingRow]:
-    """Create labeled rows with sampled negatives."""
-    rows: list[TrainingRow] = []
-    for row in positive.itertuples(index=False, name=None):
-        rows.extend(build_user_rows_from_positive(row, context))
-    return rows
-
-
-def build_user_rows_from_positive(
-    row: PositiveRow,
-    context: NegativeSamplingContext,
-) -> list[TrainingRow]:
-    """Create training rows from one positive interaction tuple."""
-    user = int(row[0])
-    return build_user_rows(
-        user,
-        int(row[1]),
-        float(row[2]),
-        context.seen_items[user],
-        context.num_items,
-        context.negative_samples,
-        context.rng,
-    )
-
-
-def build_user_rows(
-    user: int,
-    item: int,
-    weight: float,
-    user_items: set[int],
-    num_items: int,
-    negative_samples: int,
-    rng: np.random.Generator,
-) -> list[TrainingRow]:
-    """Create one positive row and its sampled negatives."""
-    return [(user, item, 1.0, weight)] + build_negative_rows(
-        user,
-        user_items,
-        num_items,
-        negative_samples,
-        rng,
-    )
-
-
 def build_negative_rows(
     user: int,
     user_items: set[int],
     num_items: int,
     negative_samples: int,
     rng: np.random.Generator,
-) -> list[TrainingRow]:
+) -> list[LabelRow]:
     """Create sampled negative rows for one user.
 
-    Ignora o usuário quando ele já interagiu com todos os itens do catálogo,
+    Ignora o usuario quando ele ja interagiu com todos os itens do catalogo,
     evitando rotular um positivo como negativo e corromper o treino.
     """
     if len(user_items) >= num_items:
         return []
     return [
-        (user, sample_negative_item(user_items, num_items, rng), 0.0, 1.0)
+        (user, sample_negative_item(user_items, num_items, rng), 0.0)
         for _ in range(negative_samples)
     ]
 
 
-def make_loader(
-    tensors: TrainingTensors,
-    batch_size: int,
-) -> DataLoader[tuple[torch.Tensor, ...]]:
-    """Build a PyTorch DataLoader."""
-    dataset = TensorDataset(
-        tensors.users,
-        tensors.items,
-        tensors.labels,
-        tensors.weights,
+def build_positive_rows(positives: pd.DataFrame) -> list[LabelRow]:
+    """Build positive rows from the feature frame."""
+    return [
+        (int(user), int(item), 1.0)
+        for user, item in positives[["user_index", "item_index"]]
+        .drop_duplicates()
+        .itertuples(index=False, name=None)
+    ]
+
+
+def build_label_rows(
+    frame: pd.DataFrame, params: PipelineParams, num_items: int
+) -> list[LabelRow]:
+    """Create labeled rows with sampled negatives for implicit feedback."""
+    rng = np.random.default_rng(params.training.random_seed)
+    seen_items = build_seen_items(frame)
+    rows = build_positive_rows(frame)
+    for user, seen in seen_items.items():
+        rows.extend(
+            build_negative_rows(
+                user, seen, num_items, params.training.negative_samples, rng
+            )
+        )
+    return rows
+
+
+def rows_to_tensors(rows: list[LabelRow]) -> LabeledTensors:
+    """Convert sampled rows to label-only tensors for the Trainer."""
+    array = np.asarray(rows, dtype=np.int64)
+    return LabeledTensors(
+        users=torch.as_tensor(array[:, 0], dtype=torch.long),
+        items=torch.as_tensor(array[:, 1], dtype=torch.long),
+        labels=torch.as_tensor(array[:, 2], dtype=torch.float32),
     )
-    return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 
-def train_epoch(
-    model: nn.Module,
-    loader: DataLoader[tuple[torch.Tensor, ...]],
-    optimizer: torch.optim.Optimizer,
-    loss_fn: nn.Module,
-) -> float:
-    """Train the model for one epoch."""
-    model.train()
-    losses: list[float] = []
-    for users, items, labels, weights in loader:
-        optimizer.zero_grad()
-        loss = loss_fn(model(users, items), labels)
-        weighted_loss = (loss * weights).mean()
-        weighted_loss.backward()
-        optimizer.step()
-        losses.append(float(weighted_loss.detach()))
-    return float(np.mean(losses)) if losses else 0.0
+def build_labeled_tensors(
+    frame: pd.DataFrame, params: PipelineParams, num_items: int
+) -> LabeledTensors:
+    """Build positive and negative examples for implicit feedback."""
+    rows = build_label_rows(frame, params, num_items)
+    if not rows:
+        raise ValueError(
+            "Nao foi possivel gerar amostras de treino; verifique o split",
+        )
+    return rows_to_tensors(rows)
 
 
-def save_checkpoint(
-    recommender: TorchEmbeddingRecommender,
-    params: PipelineParams,
+def to_interaction_data(
+    train: LabeledTensors,
+    validation: LabeledTensors,
     users: int,
     items: int,
-    final_loss: float,
+) -> InteractionData:
+    """Monta o InteractionData consumido pelo Trainer."""
+    return InteractionData(
+        user_ids=train.users,
+        item_ids=train.items,
+        labels=train.labels,
+        val_user_ids=validation.users,
+        val_item_ids=validation.items,
+        val_labels=validation.labels,
+        num_users=users,
+        num_items=items,
+    )
+
+
+def save_pipeline_checkpoint(
+    model: NeuralCollaborativeFiltering,
+    params: PipelineParams,
+    history: tuple[tuple[float, ...], tuple[float, ...]],
 ) -> None:
-    """Persist model weights and training metadata."""
+    """Persist a weights-only compatible checkpoint for the evaluate stage."""
+    train_losses, val_metrics = history
+    final_loss = float(train_losses[-1]) if train_losses else 0.0
+    best_metric = float(max(val_metrics)) if val_metrics else 0.0
     params.paths.model_checkpoint.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
-        build_checkpoint(recommender, params, users, items, final_loss),
+        {
+            "model_kind": "ncf",
+            "model_state": model.state_dict(),
+            "num_users": model.config.num_users,
+            "num_items": model.config.num_items,
+            "embedding_dim": model.config.embedding_dim,
+            "mlp_hidden_sizes": list(model.config.mlp_hidden_sizes),
+            "dropout": float(model.config.dropout),
+            "final_loss": final_loss,
+            "best_metric": best_metric,
+        },
         params.paths.model_checkpoint,
     )
-
-
-def build_checkpoint(
-    recommender: TorchEmbeddingRecommender,
-    params: PipelineParams,
-    users: int,
-    items: int,
-    final_loss: float,
-) -> dict[str, object]:
-    """Build a serializable checkpoint."""
-    return {
-        "embedding_dim": params.training.embedding_dim,
-        "final_loss": final_loss,
-        "model_state": recommender.network.state_dict(),
-        "num_items": items,
-        "num_users": users,
-    }
 
 
 def run(params: PipelineParams) -> None:
     """Run the training stage."""
     set_seed(params.training.random_seed)
-    frame = load_features(params.paths.train_features)
+    train_frame = load_features(params.paths.train_features)
+    val_frame = load_features(params.paths.validation_features)
     users, items = load_entity_counts(params.paths.mappings)
-    recommender = create_recommender(params, users, items)
-    tensors = build_training_tensors(frame, params, items)
-    loader = make_loader(tensors, params.training.batch_size)
-    optimizer = torch.optim.Adam(
-        recommender.network.parameters(),
-        lr=params.training.learning_rate,
-    )
-    loss_fn = nn.BCEWithLogitsLoss(reduction="none")
-    final_loss = 0.0
-    for _ in range(params.training.epochs):
-        final_loss = train_epoch(recommender.network, loader, optimizer, loss_fn)
-    save_checkpoint(recommender, params, users, items, final_loss)
+    model = create_ncf_model(params, users, items)
+    train_tensors = build_labeled_tensors(train_frame, params, items)
+    val_tensors = build_labeled_tensors(val_frame, params, items)
+    data = to_interaction_data(train_tensors, val_tensors, users, items)
+    trainer = Trainer(build_training_config(params), params.paths.checkpoint_dir)
+    history = trainer.train(model, data)
+    save_pipeline_checkpoint(model, params, (history.train_losses, history.val_metrics))
 
 
 def main() -> None:

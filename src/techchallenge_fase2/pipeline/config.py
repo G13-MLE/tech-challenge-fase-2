@@ -21,6 +21,7 @@ class PathParams:
     mappings: Path
     dataset_stats: Path
     model_checkpoint: Path
+    checkpoint_dir: Path
     metrics: Path
 
 
@@ -52,6 +53,8 @@ class TrainingParams:
     learning_rate: float
     negative_samples: int
     random_seed: int
+    patience: int
+    min_delta: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +133,8 @@ def build_training(raw_params: dict[str, int | float]) -> TrainingParams:
         learning_rate=float(raw_params["learning_rate"]),
         negative_samples=int(raw_params["negative_samples"]),
         random_seed=int(raw_params["random_seed"]),
+        patience=int(raw_params["patience"]),
+        min_delta=float(raw_params["min_delta"]),
     )
 
 

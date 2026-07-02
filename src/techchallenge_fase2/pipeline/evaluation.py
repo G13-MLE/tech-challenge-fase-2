@@ -11,7 +11,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from techchallenge_fase2.models.embedding import EmbeddingScoringModel
+from techchallenge_fase2.models.ncf import (
+    NCFConfig,
+    NeuralCollaborativeFiltering,
+)
 from techchallenge_fase2.pipeline.config import PipelineParams, load_params
 from techchallenge_fase2.pipeline.metrics import (
     hit_rate_at_k,
@@ -38,13 +41,16 @@ def load_checkpoint(path: Path) -> dict[str, Any]:
     return torch.load(path, map_location="cpu", weights_only=True)
 
 
-def load_model(checkpoint: dict[str, Any]) -> EmbeddingScoringModel:
-    """Rebuild the trained embedding model."""
-    model = EmbeddingScoringModel(
+def load_model(checkpoint: dict[str, Any]) -> NeuralCollaborativeFiltering:
+    """Rebuild the trained NCF model from the pipeline checkpoint."""
+    config = NCFConfig(
         num_users=int(checkpoint["num_users"]),
         num_items=int(checkpoint["num_items"]),
         embedding_dim=int(checkpoint["embedding_dim"]),
+        mlp_hidden_sizes=tuple(int(size) for size in checkpoint["mlp_hidden_sizes"]),
+        dropout=float(checkpoint["dropout"]),
     )
+    model = NeuralCollaborativeFiltering(config)
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
     return model
@@ -101,7 +107,7 @@ def filter_evaluable_relevance(
 
 
 def recommend_for_user(
-    model: EmbeddingScoringModel,
+    model: NeuralCollaborativeFiltering,
     user: int,
     candidate_items: set[int],
     excluded: set[int],
@@ -120,7 +126,7 @@ def recommend_for_user(
 
 
 def evaluate_users(
-    model: EmbeddingScoringModel,
+    model: NeuralCollaborativeFiltering,
     train: pd.DataFrame,
     test: pd.DataFrame,
     params: PipelineParams,
@@ -142,7 +148,7 @@ def evaluate_users(
 
 
 def score_user(
-    model: EmbeddingScoringModel,
+    model: NeuralCollaborativeFiltering,
     user: int,
     relevance: dict[int, set[int]],
     seen: dict[int, set[int]],
