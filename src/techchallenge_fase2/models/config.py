@@ -16,6 +16,7 @@ class ModelType(StrEnum):
     POPULARITY = "popularity"
     RECENT_ITEMS = "recent_items"
     NEURAL_NCF = "neural_ncf"
+    TORCH_EMBEDDING = "torch_embedding"
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,11 +26,14 @@ class ModelConfig:
     Args:
         model_type: Built-in model type or custom registered model key.
         recommendation_limit: Default number of items returned by a model.
+        num_users: Number of encoded users for neural models.
+        num_items: Number of encoded items for neural models.
+        embedding_dim: Embedding vector size for neural models.
     """
 
     model_type: ModelType | str = ModelType.POPULARITY
     recommendation_limit: int = 10
-    # Dimensoes necessarias apenas para modelos neurais (NCF).
+    # Dimensoes necessarias apenas para modelos neurais (NCF/TorchEmbedding).
     num_users: int = 0
     num_items: int = 0
     embedding_dim: int | None = None
@@ -40,6 +44,8 @@ class ModelConfig:
             raise ValueError("recommendation_limit must be positive")
         if self.num_users < 0 or self.num_items < 0:
             raise ValueError("num_users e num_items devem ser nao negativos")
+        if self.embedding_dim is not None and self.embedding_dim < 1:
+            raise ValueError("embedding_dim deve ser positivo")
 
     def neural_config(self, embedding_dim: int = 64) -> "NCFConfig":
         """Constroi a configuracao do NCF a partir deste ModelConfig.
@@ -64,3 +70,7 @@ class ModelConfig:
             num_items=self.num_items,
             embedding_dim=resolved_dim,
         )
+
+    def embedding_dim_or(self, default: int) -> int:
+        """Retorna embedding_dim ou um valor padrao quando ausente."""
+        return self.embedding_dim if self.embedding_dim is not None else default

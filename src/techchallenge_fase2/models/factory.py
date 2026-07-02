@@ -9,6 +9,7 @@ from techchallenge_fase2.models.baselines import (
     RecentItemsRecommender,
 )
 from techchallenge_fase2.models.config import ModelConfig, ModelType
+from techchallenge_fase2.models.embedding import TorchEmbeddingRecommender
 from techchallenge_fase2.models.ncf import (
     NeuralCollaborativeFiltering,
     NeuralRecommender,
@@ -43,6 +44,16 @@ def create_neural_ncf_model(config: ModelConfig) -> RecommenderModel:
     return NeuralRecommender(ncf)
 
 
+def create_torch_embedding_model(config: ModelConfig) -> RecommenderModel:
+    """Cria o recomendador neural baseado em embeddings."""
+    return TorchEmbeddingRecommender(
+        num_users=config.num_users,
+        num_items=config.num_items,
+        embedding_dim=config.embedding_dim_or(default=16),
+        default_limit=config.recommendation_limit,
+    )
+
+
 class RecommenderModelFactory:
     """Create recommendation models without coupling clients to classes."""
 
@@ -57,6 +68,7 @@ class RecommenderModelFactory:
         factory.register(ModelType.POPULARITY, create_popularity_model)
         factory.register(ModelType.RECENT_ITEMS, create_recent_items_model)
         factory.register(ModelType.NEURAL_NCF, create_neural_ncf_model)
+        factory.register(ModelType.TORCH_EMBEDDING, create_torch_embedding_model)
         return factory
 
     def register(self, model_type: ModelKey, creator: ModelCreator) -> None:

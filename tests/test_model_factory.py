@@ -17,6 +17,7 @@ from techchallenge_fase2.models import (
     RecentItemsRecommender,
     RecommenderModel,
     RecommenderModelFactory,
+    TorchEmbeddingRecommender,
 )
 from techchallenge_fase2.models.base import Interaction
 
@@ -57,11 +58,13 @@ class RecommenderModelFactoryTest(unittest.TestCase):
         config = ModelConfig(ModelType.POPULARITY, recommendation_limit=2)
         model = self.factory.create(config)
 
-        model.fit([
-            ("user-1", "item-2"),
-            ("user-2", "item-1"),
-            ("user-3", "item-2"),
-        ])
+        model.fit(
+            [
+                ("user-1", "item-2"),
+                ("user-2", "item-1"),
+                ("user-3", "item-2"),
+            ]
+        )
 
         self.assertIsInstance(model, PopularityRecommender)
         self.assertEqual(model.recommend("user-5"), ["item-2", "item-1"])
@@ -99,6 +102,22 @@ class RecommenderModelFactoryTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "Unknown model type"):
             self.factory.create(config)
+
+    def test_creates_torch_embedding_model(self) -> None:
+        """Factory creates the PyTorch embedding recommender."""
+        config = ModelConfig(
+            ModelType.TORCH_EMBEDDING,
+            recommendation_limit=2,
+            num_users=3,
+            num_items=4,
+            embedding_dim=8,
+        )
+
+        model = self.factory.create(config)
+
+        self.assertIsInstance(model, TorchEmbeddingRecommender)
+        self.assertEqual(model.network.user_embeddings.num_embeddings, 3)
+        self.assertEqual(model.network.item_embeddings.num_embeddings, 4)
 
     def test_rejects_invalid_recommendation_limit(self) -> None:
         """Model configuration requires a positive limit."""
