@@ -3,6 +3,7 @@
 from techchallenge_fase2.models.base import Interaction, RecommenderModel
 from techchallenge_fase2.models.baselines import (
     PopularityRecommender,
+    RandomRecommender,
     RecentItemsRecommender,
 )
 from techchallenge_fase2.models.config import ModelConfig, ModelType
@@ -18,6 +19,7 @@ __all__ = [
     "ModelConfig",
     "ModelType",
     "PopularityRecommender",
+    "RandomRecommender",
     "RecentItemsRecommender",
     "RecommenderModel",
     "RecommenderModelFactory",

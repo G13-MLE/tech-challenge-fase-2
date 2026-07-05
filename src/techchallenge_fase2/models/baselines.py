@@ -1,5 +1,6 @@
 """Simple baseline recommenders used by the model factory."""
 
+import random
 from collections import Counter
 from collections.abc import Iterable
 
@@ -70,3 +71,41 @@ class RecentItemsRecommender(RecommenderModel):
         _ = user_id
         recommendation_limit = resolve_limit(self._default_limit, limit)
         return self._ranked_items[:recommendation_limit]
+
+
+class RandomRecommender(RecommenderModel):
+    """Recommend items sampled uniformly at random from the catalog.
+
+    Serve como baseline de lower bound: qualquer modelo personalizado
+    deve superar o acaso para justificar sua complexidade.
+    """
+
+    def __init__(self, default_limit: int = 10, random_seed: int = 42) -> None:
+        """Initialize the recommender with a fixed random seed.
+
+        Args:
+            default_limit: Default number of items returned by recommend.
+            random_seed: Seed para reprodutibilidade do sampling.
+        """
+        self._default_limit = validate_limit(default_limit)
+        self._random_seed = random_seed
+        self._items: list[str] = []
+        self._rng: random.Random | None = None
+
+    def fit(self, interactions: Iterable[Interaction]) -> None:
+        """Cataloga itens únicos observados nas interações."""
+        seen: set[str] = set()
+        for _, item_id in interactions:
+            if item_id not in seen:
+                seen.add(item_id)
+        self._items = list(seen)
+        self._rng = random.Random(self._random_seed)
+
+    def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
+        """Amostra itens do catálogo de forma aleatória e reprodutível."""
+        _ = user_id
+        recommendation_limit = resolve_limit(self._default_limit, limit)
+        if not self._items or self._rng is None:
+            return []
+        n = min(recommendation_limit, len(self._items))
+        return self._rng.sample(self._items, n)

@@ -54,7 +54,7 @@ setup:
 data:
 	@echo "Baixando dataset RetailRocket para data/raw/ ..."
 	uv run python scripts/download_dataset.py
-	@echo "[OK] dataset disponivel em data/raw/."
+	@echo "[OK] dataset disponível em data/raw/."
 
 # Versionamento DVC: envia o cache ao remote OneDrive.
 dvc-push:

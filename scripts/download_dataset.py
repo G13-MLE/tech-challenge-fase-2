@@ -4,7 +4,7 @@ Baixa os arquivos events.csv, item_properties_part1.csv,
 item_properties_part2.csv e category_tree.csv para data/raw/.
 Credenciais lidas do .env (KAGGLE_USERNAME e KAGGLE_KEY).
 
-Execucao:
+Execução:
     uv run python scripts/download_dataset.py
 """
 
@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Slug do dataset no Kaggle
 KAGGLE_DATASET_SLUG = "retailrocket/ecommerce-dataset"
 
-# Arquivos esperados apos o download
+# Arquivos esperados após o download
 EXPECTED_FILES: tuple[str, ...] = (
     "events.csv",
     "item_properties_part1.csv",
@@ -57,17 +57,17 @@ def load_kaggle_credentials() -> tuple[str, str]:
 
 
 def ensure_raw_dir() -> Path:
-    """Garante que o diretorio data/raw/ exista e retorna seu caminho."""
+    """Garante que o diretório data/raw/ exista e retorna seu caminho."""
     raw_dir = PROJECT_ROOT / "data" / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     return raw_dir
 
 
 def dataset_already_downloaded(raw_dir: Path) -> bool:
-    """Verifica se todos os arquivos esperados ja existem em data/raw/.
+    """Verifica se todos os arquivos esperados já existem em data/raw/.
 
     Args:
-        raw_dir: Caminho do diretorio data/raw/.
+        raw_dir: Caminho do diretório data/raw/.
 
     Returns:
         True se todos os arquivos esperados existirem.
@@ -79,7 +79,7 @@ def download_dataset(raw_dir: Path) -> None:
     """Baixa e extrai o dataset RetailRocket via API do Kaggle.
 
     Args:
-        raw_dir: Caminho do diretorio destino (data/raw/).
+        raw_dir: Caminho do diretório destino (data/raw/).
 
     Raises:
         SystemExit: Se o download falhar.
@@ -87,7 +87,7 @@ def download_dataset(raw_dir: Path) -> None:
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
     except ImportError:
-        print("[ERROR] pacote kaggle nao instalado. Rode: uv sync")
+        print("[ERROR] pacote kaggle não instalado. Rode: uv sync")
         sys.exit(1)
 
     api = KaggleApi()
@@ -105,7 +105,7 @@ def verify_download(raw_dir: Path) -> None:
     """Confirma que todos os arquivos esperados estao presentes.
 
     Args:
-        raw_dir: Caminho do diretorio data/raw/.
+        raw_dir: Caminho do diretório data/raw/.
 
     Raises:
         SystemExit: Se algum arquivo esperado estiver ausente.
@@ -113,7 +113,7 @@ def verify_download(raw_dir: Path) -> None:
     missing = [n for n in EXPECTED_FILES if not (raw_dir / n).is_file()]
     if missing:
         joined = ", ".join(missing)
-        print(f"[ERROR] arquivos ausentes apos download: {joined}")
+        print(f"[ERROR] arquivos ausentes após download: {joined}")
         sys.exit(1)
     print("[OK] dataset baixado e verificado.")
 
@@ -152,7 +152,7 @@ def main() -> None:
     username, key = load_kaggle_credentials()
     raw_dir = ensure_raw_dir()
     if dataset_already_downloaded(raw_dir):
-        print("[SKIP] dataset ja presente em data/raw/. Nada a fazer.")
+        print("[SKIP] dataset já presente em data/raw/. Nada a fazer.")
         return
 
     with kaggle_config_env(username, key):

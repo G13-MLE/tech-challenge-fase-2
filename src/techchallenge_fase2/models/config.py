@@ -10,6 +10,7 @@ class ModelType(StrEnum):
     POPULARITY = "popularity"
     RECENT_ITEMS = "recent_items"
     TORCH_EMBEDDING = "torch_embedding"
+    RANDOM = "random"
 
 
 @dataclass(frozen=True, slots=True)

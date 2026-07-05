@@ -14,6 +14,7 @@ from techchallenge_fase2.models import (
     ModelConfig,
     ModelType,
     PopularityRecommender,
+    RandomRecommender,
     RecentItemsRecommender,
     RecommenderModel,
     RecommenderModelFactory,
@@ -84,6 +85,44 @@ class RecommenderModelFactoryTest(unittest.TestCase):
 
         self.assertIsInstance(model, RecentItemsRecommender)
         self.assertEqual(model.recommend("user-5"), ["item-3", "item-1"])
+
+    def test_creates_random_model(self) -> None:
+        """Factory creates a random recommender that samples the catalog."""
+        config = ModelConfig(ModelType.RANDOM, recommendation_limit=3)
+        interactions = [
+            ("user-1", "item-1"),
+            ("user-2", "item-2"),
+            ("user-3", "item-3"),
+        ]
+
+        model = self.factory.create(config)
+        model.fit(interactions)
+
+        self.assertIsInstance(model, RandomRecommender)
+        recommendations = model.recommend("user-5")
+        self.assertEqual(len(recommendations), 3)
+        # Todos os itens recomendados pertencem ao catálogo treinado
+        self.assertTrue(set(recommendations).issubset({"item-1", "item-2", "item-3"}))
+
+    def test_random_model_is_reproducible(self) -> None:
+        """Random recommender produces same output for same seed."""
+        config = ModelConfig("random", recommendation_limit=3)
+        interactions = [
+            ("user-1", "a"),
+            ("user-2", "b"),
+            ("user-3", "c"),
+            ("user-4", "d"),
+        ]
+
+        model_a = self.factory.create(config)
+        model_a.fit(interactions)
+        recs_a = model_a.recommend("user-5")
+
+        model_b = self.factory.create(config)
+        model_b.fit(interactions)
+        recs_b = model_b.recommend("user-5")
+
+        self.assertEqual(recs_a, recs_b)
 
     def test_registers_custom_model_creator(self) -> None:
         """Factory can be extended with a custom model creator."""

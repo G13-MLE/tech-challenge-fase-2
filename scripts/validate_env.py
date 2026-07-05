@@ -273,7 +273,7 @@ class DvcConfiguredCheck(EnvironmentCheck):
         """Verifica se o comando dvc está disponível via CLI.
 
         Returns:
-            Tupla (disponível, versao_ou_erro).
+            Tupla (disponível, versão_ou_erro).
         """
         ok, output = run_subprocess(["dvc", "version"])
         if not ok:
