@@ -147,7 +147,9 @@ def log_recommender_model(
     """Registra modelo de recomendação como artefato do MLflow.
 
     Para modelos baseline (que não são PyTorch), usa pickle.
-    Para modelos PyTorch, usa mlflow.pytorch.log_model.
+    Para modelos PyTorch, usa mlflow.pytorch.log_model com
+    serialization_format="pickle" (evitando a exigencia de input_example
+    do formato "pt2" / TorchScript tracing).
 
     Args:
         model: Instância do modelo treinado.
@@ -162,7 +164,9 @@ def log_recommender_model(
         import torch  # noqa: PLC0415
 
         if isinstance(model, torch.nn.Module):
-            mlflow.pytorch.log_model(model, artifact_path)
+            mlflow.pytorch.log_model(
+                model, artifact_path, serialization_format="pickle"
+            )
             return
     except ImportError:
         pass

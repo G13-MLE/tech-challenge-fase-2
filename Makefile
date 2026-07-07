@@ -1,4 +1,6 @@
-.PHONY: help sync setup test lint verify format data train pipeline dvc-push dvc-pull dvc-status docker-build docker-build-gpu mlflow-up mlflow-down
+# =============================================================================
+# Tech Challenge Fase 2 - Makefile
+# =============================================================================
 
 PYTHON := uv run python
 UV_CACHE_DIR ?= .uv-cache
@@ -7,79 +9,75 @@ PRE_COMMIT_HOME ?= .pre-commit-cache
 export UV_CACHE_DIR
 export PRE_COMMIT_HOME
 
-# Help padrão
+# ---------------------------------------------------------------------------
+# Phony targets
+# ---------------------------------------------------------------------------
+.PHONY: \
+	help \
+	sync setup verify \
+	test lint format \
+	data train pipeline pipeline-force \
+	dvc-push dvc-pull dvc-status \
+	docker-build docker-build-gpu \
+	mlflow-up mlflow-down \
+	baselines ease compare-models
+
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
 help:
 	@echo "Tech Challenge Fase 2 - Comandos Disponíveis"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make setup         - Configurar ambiente (uv sync + pre-commit + .env + DVC remote)"
+	@echo "  make setup            - Configurar ambiente (.env, deps, pre-commit, DVC remote)"
+	@echo "  make sync             - Sincronizar dependências (uv sync)"
+	@echo "  make verify           - Validar ambiente (Python, deps, .env, DVC, Docker, GPU)"
 	@echo ""
-	@echo "Desenvolvimento:"
-	@echo "  make test          - Rodar testes (pytest)"
-	@echo "  make lint          - Verificar código com ruff"
-	@echo "  make format        - Formatar código com ruff"
-	@echo "  make data          - Baixar dataset RetailRocket via Kaggle"
-	@echo "  make train         - Reexecutar o stage de treino via DVC (dvc repro train)"
-	@echo "  make pipeline      - Reexecutar o pipeline DVC completo (dvc repro)"
-	@echo "  make dvc-push      - Enviar cache DVC ao remote"
-	@echo "  make dvc-pull      - Restaurar dados pelo DVC"
-	@echo "  make dvc-status    - Verificar status DVC"
+	@echo "Qualidade:"
+	@echo "  make test             - Rodar testes (pytest)"
+	@echo "  make lint             - Verificar código com ruff"
+	@echo "  make format           - Formatar código com ruff"
 	@echo ""
-	@echo "Dados (DVC + OneDrive):"
-	@echo "  make data          - Baixar dataset RetailRocket do Kaggle"
-	@echo "  make dvc-push      - Enviar cache DVC ao remote OneDrive"
-	@echo "  make dvc-pull      - Baixar cache DVC do remote OneDrive"
-	@echo "  make dvc-status    - Verificar estado do versionamento DVC"
+	@echo "Pipeline DVC:"
+	@echo "  make data             - Baixar dataset RetailRocket via Kaggle"
+	@echo "  make train            - Reexecutar stage de treino (dvc repro train)"
+	@echo "  make pipeline         - Reexecutar pipeline completo (dvc repro)"
+	@echo "  make pipeline-force   - Reexecutar pipeline forçado (dvc repro --force)"
+	@echo "  make dvc-push         - Enviar cache DVC ao remote"
+	@echo "  make dvc-pull         - Restaurar dados do remote DVC"
+	@echo "  make dvc-status       - Verificar status do versionamento DVC"
 	@echo ""
-	@echo "Docker (aplicação):"
+	@echo "Avaliacao comparativa:"
+	@echo "  make baselines        - Rodar pipeline de baselines (8 modelos) no MLflow"
+	@echo "  make ease             - Rodar pipeline dedicado do EASE^ no MLflow"
+	@echo "  make compare-models   - Comparar modelos vs baselines (min. 4 metricas)"
+	@echo ""
+	@echo "Docker:"
 	@echo "  make docker-build     - Build imagem CPU (default)"
 	@echo "  make docker-build-gpu - Build imagem GPU (com CUDA)"
-	@echo ""
-	@echo "Docker (MLflow):"
-	@echo "  make mlflow-up    - Iniciar stack MLflow em background (requer .env)"
-	@echo "  make mlflow-down  - Parar containers MLflow"
+	@echo "  make mlflow-up        - Iniciar stack MLflow em background (requer .env)"
+	@echo "  make mlflow-down      - Parar containers MLflow"
 	@echo ""
 
+# ---------------------------------------------------------------------------
+# Setup e ambiente
+# ---------------------------------------------------------------------------
 sync:
 	uv sync
 
-# Setup inicial do ambiente: .env, deps, pre-commit e remote DVC OneDrive.
-setup:
+setup: sync
 	@echo "Configurando ambiente..."
-	@$(PYTHON) -c "from pathlib import Path; src = Path('.env.example'); dst = Path('.env'); created = not dst.exists(); dst.write_bytes(src.read_bytes()) if created else None; print('Criando .env a partir de .env.example...' if created else '.env já existe; mantendo arquivo local.')"
-	uv sync
 	@$(PYTHON) -c "import subprocess, sys; hooks_path = subprocess.run(['git', 'config', '--get', 'core.hooksPath'], capture_output=True, text=True).stdout.strip(); print('core.hooksPath configurado; instalando apenas ambientes do pre-commit.' if hooks_path else 'Instalando hook do pre-commit...'); command = [sys.executable, '-m', 'pre_commit', 'install-hooks'] if hooks_path else [sys.executable, '-m', 'pre_commit', 'install', '--install-hooks']; raise SystemExit(subprocess.call(command))"
 	@$(PYTHON) scripts/setup_environment.py
 	@echo "Setup concluído!"
 
-# Download do dataset RetailRocket via Kaggle (requer KAGGLE_USERNAME/KAGGLE_KEY no .env).
-data:
-	@echo "Baixando dataset RetailRocket para data/raw/ ..."
-	uv run python scripts/download_dataset.py
-	@echo "[OK] dataset disponível em data/raw/."
+verify:
+	@echo "Validando ambiente..."
+	@$(PYTHON) scripts/validate_env.py
 
-# Reexecuta apenas o stage de treino (dvc repro train).
-train:
-	@echo "Reexecutando stage de treino do pipeline DVC..."
-	uv run dvc repro train
-
-# Reexecuta o pipeline DVC completo (preprocess, feature_eng, train, evaluate).
-pipeline:
-	@echo "Reexecutando pipeline DVC completo..."
-	uv run dvc repro
-
-# Versionamento DVC: envia o cache ao remote OneDrive.
-dvc-push:
-	uv run dvc push
-
-# Versionamento DVC: baixa o cache do remote OneDrive e restaura os dados.
-dvc-pull:
-	uv run dvc pull
-
-# Status do versionamento DVC.
-dvc-status:
-	uv run dvc status
-
+# ---------------------------------------------------------------------------
+# Qualidade
+# ---------------------------------------------------------------------------
 test:
 	@echo "Executando testes..."
 	uv run pytest
@@ -88,13 +86,61 @@ lint:
 	@echo "Verificando código com ruff..."
 	uv run ruff check .
 
-verify:
-	uv run python scripts/validate_env.py
-
 format:
 	@echo "Formatando código com ruff..."
 	uv run ruff format .
 
+# ---------------------------------------------------------------------------
+# Avaliacao comparativa (MLflow)
+# ---------------------------------------------------------------------------
+baselines:
+	@echo "Rodando pipeline de baselines (8 modelos) no MLflow..."
+	uv run python -m techchallenge_fase2.pipelines.run_baselines
+
+ease:
+	@echo "Rodando pipeline dedicado do EASE^ no MLflow..."
+	uv run python -m techchallenge_fase2.pipelines.run_ease
+
+# ---------------------------------------------------------------------------
+# Comparacao de modelos (min. 4 metricas: precision, recall, NDCG, MAP)
+# ---------------------------------------------------------------------------
+compare-models:
+	@echo "Comparando modelos de recomendacao vs baselines..."
+	uv run python -m techchallenge_fase2.pipelines.run_compare_models
+	@echo "Comparacao concluida! Relatorio em reports/model_comparison_report.md"
+
+# ---------------------------------------------------------------------------
+# Pipeline DVC
+# ---------------------------------------------------------------------------
+data:
+	@echo "Baixando dataset RetailRocket para data/raw/ ..."
+	uv run python scripts/download_dataset.py
+	@echo "[OK] dataset disponível em data/raw/."
+
+train:
+	@echo "Reexecutando stage de treino do pipeline DVC..."
+	uv run dvc repro train
+
+pipeline:
+	@echo "Reexecutando pipeline DVC completo..."
+	uv run dvc repro
+
+pipeline-force:
+	@echo "Reexecutando pipeline DVC completo (forçado)..."
+	uv run dvc repro --force
+
+dvc-push:
+	uv run dvc push
+
+dvc-pull:
+	uv run dvc pull
+
+dvc-status:
+	uv run dvc status
+
+# ---------------------------------------------------------------------------
+# Docker
+# ---------------------------------------------------------------------------
 docker-build:
 	docker build -f docker/Dockerfile --target cpu -t techchallenge-fase2 .
 

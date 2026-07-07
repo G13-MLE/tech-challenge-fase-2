@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from techchallenge_fase2.pipeline.config import PipelineParams, load_params
+from techchallenge_fase2.pipelines.config import PipelineParams, load_params
 
 EVENT_COLUMNS = ["timestamp", "visitorid", "event", "itemid"]
 

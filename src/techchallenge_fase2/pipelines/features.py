@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from techchallenge_fase2.pipeline.config import PipelineParams, load_params
+from techchallenge_fase2.pipelines.config import PipelineParams, load_params
 
 
 def parse_args() -> argparse.Namespace:

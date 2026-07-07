@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     mlflow_tracking_uri: str = "http://localhost:5000"
     mlflow_experiment_name: str = "tech-challenge-fase2"
+    mlflow_ncf_experiment_name: str = "tech-challenge-ncf"
+    mlflow_ease_experiment_name: str = "tech-challenge-ease"
+    mlflow_baseline_experiment_name: str = "tech-challenge-baselines"
 
     dvc_remote_url: str = ""
 

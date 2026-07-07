@@ -173,6 +173,27 @@ class TestLogRecommenderModel:
         # Should have logged an artifact (pickle file)
         assert mock_mlflow.log_artifact.called
 
+    @staticmethod
+    @patch("techchallenge_fase2.training.mlflow_tracking.mlflow")
+    def test_logs_pytorch_model_with_pt1_format(mock_mlflow: MagicMock) -> None:
+        """Should log PyTorch model using serialization_format='pt1'."""
+        from techchallenge_fase2.models.ncf import (
+            NCFConfig,
+            NeuralCollaborativeFiltering,
+        )
+
+        model = NeuralCollaborativeFiltering(
+            NCFConfig(num_users=3, num_items=3, embedding_dim=4)
+        )
+        log_recommender_model(model, "ncf")
+        mock_mlflow.set_tag.assert_any_call(
+            "model_type", "NeuralCollaborativeFiltering"
+        )
+        mock_mlflow.set_tag.assert_any_call("model_name", "ncf")
+        mock_mlflow.pytorch.log_model.assert_called_once_with(
+            model, "model", serialization_format="pickle"
+        )
+
 
 class TestLogInputDataSummary:
     """Tests for log_input_data_summary function."""

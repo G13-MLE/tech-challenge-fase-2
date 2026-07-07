@@ -11,6 +11,9 @@ SRC_PATH = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, os.fspath(SRC_PATH))
 
 from techchallenge_fase2.models import (
+    EASETorchRecommender,
+    ItemKNNRecommender,
+    LogisticRegressionRecommender,
     ModelConfig,
     ModelType,
     NeuralCollaborativeFiltering,
@@ -181,6 +184,52 @@ class RecommenderModelFactoryTest(unittest.TestCase):
         self.assertIsInstance(model._model, NeuralCollaborativeFiltering)
         self.assertEqual(model._model.config.num_users, 3)
         self.assertEqual(model._model.config.num_items, 4)
+
+    def test_creates_ease_torch_model(self) -> None:
+        """Factory cria o recomendador EASE^ (candidato a campeao)."""
+        config = ModelConfig(
+            ModelType.EASE_TORCH,
+            recommendation_limit=3,
+            lambda_reg=250.0,
+            max_items=0,
+            batch_size=2,
+        )
+
+        model = self.factory.create(config)
+
+        self.assertIsInstance(model, EASETorchRecommender)
+        model.fit([("u1", "i1"), ("u1", "i2"), ("u2", "i1"), ("u2", "i3")])
+        recs = model.recommend("u1", limit=2)
+        self.assertEqual(len(recs), 2)
+
+    def test_creates_item_knn_model(self) -> None:
+        """Factory cria o recomendador ItemKNN (scikit-learn)."""
+        config = ModelConfig(ModelType.ITEM_KNN, recommendation_limit=3)
+
+        model = self.factory.create(config)
+
+        self.assertIsInstance(model, ItemKNNRecommender)
+        model.fit([("u1", "i1"), ("u1", "i2"), ("u2", "i1"), ("u2", "i3")])
+        recs = model.recommend("u1", limit=2)
+        self.assertEqual(len(recs), 2)
+
+    def test_creates_logistic_regression_model(self) -> None:
+        """Factory cria o recomendador LogisticRegression (scikit-learn)."""
+        config = ModelConfig(ModelType.LOGISTIC_REGRESSION, recommendation_limit=3)
+
+        model = self.factory.create(config)
+
+        self.assertIsInstance(model, LogisticRegressionRecommender)
+        model.fit([("u1", "i1"), ("u1", "i2"), ("u2", "i1"), ("u2", "i3")])
+        recs = model.recommend("u1", limit=2)
+        self.assertEqual(len(recs), 2)
+
+    def test_available_types_includes_new_models(self) -> None:
+        """Factory default registra todos os modelos novos."""
+        types = self.factory.available_types()
+        self.assertIn("ease_torch", types)
+        self.assertIn("item_knn", types)
+        self.assertIn("logistic_regression", types)
 
 
 if __name__ == "__main__":

@@ -2,8 +2,19 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from pydantic_settings import SettingsConfigDict
 
 from configs.settings import Environment, Settings
+
+
+class _DefaultsOnlySettings(Settings):
+    """Settings sem leitura de .env, para testar valores padrão."""
+
+    model_config = SettingsConfigDict(
+        env_file=None,
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 @pytest.fixture
@@ -27,7 +38,7 @@ def clear_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_settings_defaults(clear_env: None) -> None:
-    settings = Settings()
+    settings = _DefaultsOnlySettings()
 
     assert settings.env == Environment.DEVELOPMENT
     assert settings.random_seed == 42
