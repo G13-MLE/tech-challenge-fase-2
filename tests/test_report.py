@@ -185,6 +185,33 @@ class TestBuildDataSection:
         )
         assert "Esparsidade" in section
 
+    def test_3way_split_description_shows_validation(self) -> None:
+        """Secao com val_ratio mostra split 3-way com validacao."""
+        section = build_data_section(
+            num_users=100,
+            num_items=200,
+            num_interactions=1000,
+            split_strategy="chronological_3way",
+            test_ratio=0.15,
+            val_ratio=0.15,
+        )
+        assert "val" in section.lower()
+        assert "70% treino" in section
+        assert "15% val" in section
+        assert "15% teste" in section
+
+    def test_2way_split_description_omits_validation(self) -> None:
+        """Secao sem val_ratio mostra split 2-way sem validacao."""
+        section = build_data_section(
+            num_users=100,
+            num_items=200,
+            num_interactions=1000,
+            split_strategy="chronological_holdout",
+            test_ratio=0.15,
+            val_ratio=None,
+        )
+        assert "val" not in section.lower().split("estrategia")[1].split("(")[0]
+
 
 class TestGenerateMarkdownReport:
     """Testes para generate_markdown_report."""

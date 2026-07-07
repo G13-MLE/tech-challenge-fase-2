@@ -96,8 +96,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--test-ratio",
         type=float,
-        default=0.2,
-        help="Fracao de interacoes para teste (default: 0.2)",
+        default=0.15,
+        help="Fracao de interacoes para teste (default: 0.15, com 70/15/15)",
     )
     parser.add_argument(
         "--random-seed",
@@ -289,7 +289,7 @@ def build_comparison_summary(
 
 def run_compare_pipeline(  # noqa: PLR0913
     data_dir: str | Path = "data/raw",
-    test_ratio: float = 0.2,
+    test_ratio: float = 0.15,
     random_seed: int = 42,
     skip_ease: bool = False,
     experiment_name: str | None = None,
@@ -486,8 +486,9 @@ def run_compare_pipeline(  # noqa: PLR0913
         num_interactions=len(interactions_df),
         num_evaluated_users=len(ground_truth),
         dataset_name="RetailRocket E-Commerce",
-        split_strategy="temporal_holdout",
+        split_strategy="chronological_3way",
         test_ratio=test_ratio,
+        val_ratio=test_ratio,
         random_seed=random_seed,
     )
     report_path = save_markdown_report(

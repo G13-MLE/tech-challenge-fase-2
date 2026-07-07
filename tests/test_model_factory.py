@@ -231,6 +231,27 @@ class RecommenderModelFactoryTest(unittest.TestCase):
         self.assertIn("item_knn", types)
         self.assertIn("logistic_regression", types)
 
+    def test_ease_config_passes_device(self) -> None:
+        """ModelConfig deve repassar device para EASEConfig."""
+        config = ModelConfig(
+            ModelType.EASE_TORCH,
+            recommendation_limit=3,
+            lambda_reg=100.0,
+            max_items=0,
+            batch_size=2,
+            device="cpu",
+        )
+        ease_cfg = config.ease_config()
+        self.assertEqual(ease_cfg.device, "cpu")
+
+    def test_model_config_validates_device(self) -> None:
+        """ModelConfig deve rejeitar device invalido."""
+        try:
+            ModelConfig(ModelType.EASE_TORCH, device="invalid")
+        except ValueError:
+            return
+        raise AssertionError("ValueError esperado para device='invalid'")
+
 
 if __name__ == "__main__":
     unittest.main()

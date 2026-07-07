@@ -47,8 +47,8 @@ from techchallenge_fase2.pipelines.run_baselines import (
     temporal_holdout_split,
 )
 from techchallenge_fase2.pipelines.splits import (
-    chronological_holdout_split,
-    filter_warm_start,
+    chronological_train_val_test_split,
+    filter_warm_start_three_way,
 )
 from techchallenge_fase2.training.metrics import compute_recommender_metrics
 from techchallenge_fase2.training.mlflow_tracking import (
@@ -245,28 +245,35 @@ def run_ease_pipeline(  # noqa: PLR0913
 def _split_chronological(
     interactions_df: pd.DataFrame, test_ratio: float
 ) -> tuple[list[Interaction], dict[str, set[str]], dict[str, list[str]]]:
-    """Divide interacoes usando split cronologico global com warm-start filter.
+    """Divide interacoes usando split cronologico 3-way com warm-start filter.
+
+    Usa split cronologico global 70/15/15 (treino/validacao/teste) conforme
+    o plano da issue #15. O conjunto de validacao fica disponivel para
+    ajuste futuro de hiperparametros; a avaliacao final usa o teste.
 
     Args:
         interactions_df: DataFrame com colunas user_id, item_id, timestamp.
-        test_ratio: Fracao para teste.
+        test_ratio: Fracao para teste (default 0.15; validacao usa a mesma).
 
     Returns:
-        Tupla (train_interactions, ground_truth, all_items_by_user).
+        Tupla (train_interactions, test_ground_truth, all_items_by_user).
     """
     if "timestamp" not in interactions_df.columns:
         logger.warning(
             "Coluna timestamp ausente; usando fallback temporal_holdout_split"
         )
         return temporal_holdout_split(interactions_df, test_ratio=test_ratio)
-    split = chronological_holdout_split(interactions_df, test_ratio)
-    split = filter_warm_start(split)
+    val_ratio = test_ratio
+    split = chronological_train_val_test_split(
+        interactions_df, val_ratio=val_ratio, test_ratio=test_ratio
+    )
+    split = filter_warm_start_three_way(split)
     all_items_by_user: dict[str, list[str]] = {}
     for uid, iid in split.train_interactions:
         all_items_by_user.setdefault(uid, []).append(iid)
     return (
         split.train_interactions,
-        split.ground_truth,
+        split.test_ground_truth,
         all_items_by_user,
     )
 
@@ -421,8 +428,9 @@ def _save_ease_report(  # noqa: PLR0913
         num_interactions=len(interactions_df),
         num_evaluated_users=len(ground_truth),
         dataset_name="RetailRocket E-Commerce",
-        split_strategy="chronological_holdout",
+        split_strategy="chronological_3way",
         test_ratio=test_ratio,
+        val_ratio=test_ratio,
         random_seed=random_seed,
     )
     report_path = save_markdown_report(

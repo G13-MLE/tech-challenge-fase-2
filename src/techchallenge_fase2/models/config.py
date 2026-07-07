@@ -40,6 +40,7 @@ class ModelConfig:
             Use 0 para catalogo completo.
         batch_size: Tamanho do bloco de usuarios para predicao do EASE^.
         popularity_blending: Peso de popularidade adicionado ao score do EASE^.
+        device: Dispositivo do EASE^ ("auto" detecta MPS/CUDA, "cpu" força CPU).
     """
 
     model_type: ModelType | str = ModelType.POPULARITY
@@ -51,6 +52,7 @@ class ModelConfig:
     max_items: int = 20000
     batch_size: int = 1000
     popularity_blending: float = 0.0
+    device: str = "auto"
     ncf_epochs: int = 30
     ncf_learning_rate: float = 0.001
     ncf_negatives_per_positive: int = 4
@@ -73,6 +75,8 @@ class ModelConfig:
             raise ValueError("batch_size deve ser positivo")
         if self.popularity_blending < 0:
             raise ValueError("popularity_blending deve ser nao negativo")
+        if self.device not in ("auto", "cpu"):
+            raise ValueError("device deve ser 'auto' ou 'cpu'")
 
     def neural_config(self) -> "NCFConfig":
         """Constroi a configuracao do NCF a partir deste ModelConfig.
@@ -147,4 +151,5 @@ class ModelConfig:
             max_items=self.max_items,
             batch_size=self.batch_size,
             popularity_blending=self.popularity_blending,
+            device=self.device,
         )

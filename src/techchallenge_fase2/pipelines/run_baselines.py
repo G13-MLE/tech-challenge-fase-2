@@ -3,7 +3,7 @@
 Orquestra o fluxo completo:
 1. Carrega configuracao e ambiente
 2. Carrega dados de interacoes
-3. Divide em treino/teste (split cronologico global)
+3. Divide em treino/validacao/teste (split cronologico global 70/15/15)
 4. Treina e avalia todos os modelos (popularity, recent_items, random,
    torch_embedding, neural_ncf, ease_torch, item_knn, logistic_regression)
 5. Registra hiperparametros, metricas e artefatos no MLflow
@@ -43,7 +43,9 @@ from techchallenge_fase2.pipelines.report import (
 )
 from techchallenge_fase2.pipelines.splits import (
     chronological_holdout_split,
+    chronological_train_val_test_split,
     filter_warm_start,
+    filter_warm_start_three_way,
 )
 from techchallenge_fase2.training.metrics import compute_recommender_metrics
 from techchallenge_fase2.training.mlflow_tracking import (
@@ -126,7 +128,7 @@ def build_input_data_summary(
     return {
         "dataset": "RetailRocket E-Commerce",
         "dataset_version": dataset_version,
-        "split_strategy": "temporal_holdout",
+        "split_strategy": "chronological_3way",
         "test_ratio": test_ratio,
         "random_seed": random_seed,
         "num_total_interactions": num_interactions,
@@ -266,10 +268,13 @@ def temporal_holdout_split(
     random_seed: int = 42,
     timestamp_col: str = "timestamp",
 ) -> tuple[list[Interaction], dict[str, set[str]], dict[str, list[str]]]:
-    """Divide interacoes em treino e teste usando corte cronologico global.
+    """Divide interacoes em treino/validacao/teste com corte cronologico global.
 
-    Mantem compatibilidade com a assinatura anterior, mas delega para
-    o split cronologico que reproduz o cenario real de previsao do futuro.
+    Usa split cronologico 3-way (70/15/15 por padrao) conforme o plano da
+    issue #15. O conjunto de validacao fica disponivel para selecao de
+    hiperparametros; a avaliacao final usa o conjunto de teste.
+
+    Mantem compatibilidade com a assinatura anterior.
 
     Args:
         interactions_df: DataFrame com colunas 'user_id', 'item_id' e
@@ -286,12 +291,24 @@ def temporal_holdout_split(
         - all_items_by_user: mapeamento user_id -> lista de itens do usuario
     """
     _ = random_seed
-    split = chronological_holdout_split(interactions_df, test_ratio, timestamp_col)
-    split = filter_warm_start(split)
+    if timestamp_col not in interactions_df.columns:
+        split = chronological_holdout_split(interactions_df, test_ratio, timestamp_col)
+        split = filter_warm_start(split)
+        all_items_by_user = _group_items_by_user(interactions_df)
+        return (
+            split.train_interactions,
+            split.ground_truth,
+            all_items_by_user,
+        )
+    val_ratio = test_ratio
+    split = chronological_train_val_test_split(
+        interactions_df, val_ratio=val_ratio, test_ratio=test_ratio
+    )
+    split = filter_warm_start_three_way(split)
     all_items_by_user = _group_items_by_user(interactions_df)
     return (
         split.train_interactions,
-        split.ground_truth,
+        split.test_ground_truth,
         all_items_by_user,
     )
 
@@ -419,7 +436,7 @@ def _sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
 
 def run_baseline_pipeline(  # noqa: PLR0913
     data_dir: str | Path = "data/raw",
-    test_ratio: float = 0.2,
+    test_ratio: float = 0.15,
     random_seed: int = 42,
     experiment_name: str | None = None,
     k_values: tuple[int, ...] = K_VALUES,
@@ -606,8 +623,9 @@ def run_baseline_pipeline(  # noqa: PLR0913
         num_interactions=len(interactions_df),
         num_evaluated_users=len(ground_truth),
         dataset_name="RetailRocket E-Commerce",
-        split_strategy="temporal_holdout",
+        split_strategy="chronological_3way",
         test_ratio=test_ratio,
+        val_ratio=test_ratio,
         random_seed=random_seed,
     )
     report_path = save_markdown_report(

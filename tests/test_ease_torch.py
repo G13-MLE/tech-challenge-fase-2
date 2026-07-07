@@ -136,3 +136,75 @@ def test_top_item_indices_subset_of_catalog() -> None:
     model = make_trained_model(config=EASEConfig(max_items=3))
     assert len(model._top_item_indices) == 3
     assert all(0 <= idx < 5 for idx in model._top_item_indices)
+
+
+def test_ease_config_validates_device() -> None:
+    """device deve ser 'auto' ou 'cpu'."""
+    try:
+        EASEConfig(device="cuda")
+    except ValueError:
+        return
+    raise AssertionError("ValueError esperado para device='cuda'")
+
+
+def test_ease_config_device_cpu_resolves_correctly() -> None:
+    """Config com device='cpu' deve resolver para torch.device('cpu')."""
+    model = EASETorchRecommender(EASEConfig(device="cpu"))
+    assert model._device == torch.device("cpu")
+
+
+def test_ease_config_device_auto_resolves_to_valid_device() -> None:
+    """Config com device='auto' deve resolver para um dispositivo valido."""
+    model = EASETorchRecommender(EASEConfig(device="auto"))
+    assert model._device in (
+        torch.device("cpu"),
+        torch.device("mps"),
+        torch.device("cuda"),
+    )
+
+
+def test_recommend_batch_returns_recommendations_for_all_users() -> None:
+    """recommend_batch deve retornar recomendacoes para todos os usuarios."""
+    model = make_trained_model()
+    user_ids = ["u1", "u2", "u3", "unknown_user"]
+    results = model.recommend_batch(user_ids, limit=2)
+    assert set(results.keys()) == {"u1", "u2", "u3", "unknown_user"}
+    for uid in user_ids:
+        assert len(results[uid]) == 2
+        assert all(item.startswith("i") for item in results[uid])
+
+
+def test_recommend_batch_excludes_seen_items() -> None:
+    """recommend_batch nao deve recomendar itens ja consumidos."""
+    model = make_trained_model()
+    results = model.recommend_batch(["u1"], limit=2)
+    seen = {"i1", "i2", "i3"}
+    for item in results["u1"]:
+        assert item not in seen
+
+
+def test_recommend_batch_respects_batch_size() -> None:
+    """recommend_batch deve funcionar com batch_size menor que total."""
+    config = EASEConfig(lambda_reg=250.0, max_items=0, batch_size=2)
+    model = make_trained_model(config=config)
+    user_ids = ["u1", "u2", "u3", "u4"]
+    results = model.recommend_batch(user_ids, limit=3)
+    assert all(len(results[uid]) == 3 for uid in user_ids)
+
+
+def test_recommend_batch_before_fit_raises_runtime_error() -> None:
+    """recommend_batch antes do treino deve lancar RuntimeError."""
+    model = EASETorchRecommender(EASEConfig())
+    try:
+        model.recommend_batch(["u1"], limit=2)
+    except RuntimeError:
+        return
+    raise AssertionError("RuntimeError esperada")
+
+
+def test_recommend_batch_matches_single_recommend() -> None:
+    """recommend_batch deve produzir os mesmos itens que recommend individual."""
+    model = make_trained_model()
+    single = model.recommend("u1", limit=2)
+    batch_results = model.recommend_batch(["u1"], limit=2)
+    assert single == batch_results["u1"]

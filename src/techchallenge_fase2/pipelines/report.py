@@ -221,8 +221,9 @@ def build_data_section(
     num_interactions: int = 0,
     num_evaluated_users: int = 0,
     dataset_name: str = "RetailRocket E-Commerce",
-    split_strategy: str = "temporal_holdout",
-    test_ratio: float = 0.2,
+    split_strategy: str = "chronological_3way",
+    test_ratio: float = 0.15,
+    val_ratio: float | None = None,
     random_seed: int = 42,
 ) -> str:
     """Constroi secao markdown com resumo dos dados.
@@ -235,6 +236,8 @@ def build_data_section(
         dataset_name: Nome do dataset.
         split_strategy: Estrategia de divisao.
         test_ratio: Fracao reservada para teste.
+        val_ratio: Fracao reservada para validacao (3-way split).
+            Se None, usa split 2-way.
         random_seed: Seed para reprodutibilidade.
 
     Returns:
@@ -245,9 +248,17 @@ def build_data_section(
         if num_users and num_items
         else 1.0
     )
-    train_pct = f"{1 - test_ratio:.0%}"
-    test_pct = f"{test_ratio:.0%}"
-    split_desc = f"{split_strategy} ({train_pct} treino / {test_pct} teste)"
+    if val_ratio is not None:
+        train_pct = f"{1 - test_ratio - val_ratio:.0%}"
+        val_pct = f"{val_ratio:.0%}"
+        test_pct = f"{test_ratio:.0%}"
+        split_desc = (
+            f"{split_strategy} ({train_pct} treino / {val_pct} val / {test_pct} teste)"
+        )
+    else:
+        train_pct = f"{1 - test_ratio:.0%}"
+        test_pct = f"{test_ratio:.0%}"
+        split_desc = f"{split_strategy} ({train_pct} treino / {test_pct} teste)"
 
     lines = [
         "### Dados",
@@ -273,8 +284,9 @@ def generate_markdown_report(  # noqa: PLR0913
     num_interactions: int = 0,
     num_evaluated_users: int = 0,
     dataset_name: str = "RetailRocket E-Commerce",
-    split_strategy: str = "temporal_holdout",
-    test_ratio: float = 0.2,
+    split_strategy: str = "chronological_3way",
+    test_ratio: float = 0.15,
+    val_ratio: float | None = 0.15,
     random_seed: int = 42,
 ) -> str:
     """Gera relatorio markdown completo de comparacao de modelos.
@@ -291,8 +303,9 @@ def generate_markdown_report(  # noqa: PLR0913
         num_interactions: Numero total de interacoes.
         num_evaluated_users: Numero de usuarios avaliados.
         dataset_name: Nome do dataset.
-        split_strategy: Estrategia de divisao treino/teste.
+        split_strategy: Estrategia de divisao treino/val/teste.
         test_ratio: Fracao reservada para teste.
+        val_ratio: Fracao reservada para validacao (3-way split).
         random_seed: Seed para reprodutibilidade.
 
     Returns:
@@ -317,6 +330,7 @@ def generate_markdown_report(  # noqa: PLR0913
             dataset_name=dataset_name,
             split_strategy=split_strategy,
             test_ratio=test_ratio,
+            val_ratio=val_ratio,
             random_seed=random_seed,
         ),
         "",
