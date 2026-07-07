@@ -40,23 +40,33 @@ stages:
     cmd: uv run python -m techchallenge_fase2.pipeline.training
     deps:
       - data/features/train.parquet
+      - data/features/validation.parquet
       - data/features/mappings.json
+      - src/techchallenge_fase2/data/__init__.py
       - src/techchallenge_fase2/models/config.py
-      - src/techchallenge_fase2/models/embedding.py
+      - src/techchallenge_fase2/models/ncf.py
       - src/techchallenge_fase2/models/factory.py
       - src/techchallenge_fase2/pipeline/config.py
       - src/techchallenge_fase2/pipeline/training.py
+      - src/techchallenge_fase2/training/__init__.py
+      - src/techchallenge_fase2/training/early_stopping.py
+      - src/techchallenge_fase2/training/checkpoint.py
+      - src/techchallenge_fase2/training/trainer.py
     params:
       - paths.model_checkpoint
+      - paths.checkpoint_dir
       - training.batch_size
       - training.epochs
       - training.embedding_dim
       - training.learning_rate
       - training.negative_samples
       - training.random_seed
+      - training.patience
+      - training.min_delta
       - evaluation.top_k
     outs:
       - models/torch_embedding_recommender.pt
+      - models/checkpoints/
 
   evaluate:
     cmd: uv run python -m techchallenge_fase2.pipeline.evaluation
@@ -64,7 +74,7 @@ stages:
       - data/features/train.parquet
       - data/features/test.parquet
       - models/torch_embedding_recommender.pt
-      - src/techchallenge_fase2/models/embedding.py
+      - src/techchallenge_fase2/models/ncf.py
       - src/techchallenge_fase2/pipeline/config.py
       - src/techchallenge_fase2/pipeline/evaluation.py
       - src/techchallenge_fase2/pipeline/metrics.py

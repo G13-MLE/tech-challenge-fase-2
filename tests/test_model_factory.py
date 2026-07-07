@@ -13,6 +13,8 @@ sys.path.insert(0, os.fspath(SRC_PATH))
 from techchallenge_fase2.models import (
     ModelConfig,
     ModelType,
+    NeuralCollaborativeFiltering,
+    NeuralRecommender,
     PopularityRecommender,
     RandomRecommender,
     RecentItemsRecommender,
@@ -162,6 +164,23 @@ class RecommenderModelFactoryTest(unittest.TestCase):
         """Model configuration requires a positive limit."""
         with self.assertRaisesRegex(ValueError, "recommendation_limit"):
             ModelConfig(recommendation_limit=0)
+
+    def test_creates_neural_ncf_model(self) -> None:
+        """Factory cria o recomendador NCF (GMF + MLP)."""
+        config = ModelConfig(
+            ModelType.NEURAL_NCF,
+            recommendation_limit=2,
+            num_users=3,
+            num_items=4,
+            embedding_dim=8,
+        )
+
+        model = self.factory.create(config)
+
+        self.assertIsInstance(model, NeuralRecommender)
+        self.assertIsInstance(model._model, NeuralCollaborativeFiltering)
+        self.assertEqual(model._model.config.num_users, 3)
+        self.assertEqual(model._model.config.num_items, 4)
 
 
 if __name__ == "__main__":

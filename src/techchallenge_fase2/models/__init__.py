@@ -12,12 +12,20 @@ from techchallenge_fase2.models.embedding import (
     TorchEmbeddingRecommender,
 )
 from techchallenge_fase2.models.factory import RecommenderModelFactory
+from techchallenge_fase2.models.ncf import (
+    NCFConfig,
+    NeuralCollaborativeFiltering,
+    NeuralRecommender,
+)
 
 __all__ = [
     "EmbeddingScoringModel",
     "Interaction",
     "ModelConfig",
     "ModelType",
+    "NCFConfig",
+    "NeuralCollaborativeFiltering",
+    "NeuralRecommender",
     "PopularityRecommender",
     "RandomRecommender",
     "RecentItemsRecommender",
