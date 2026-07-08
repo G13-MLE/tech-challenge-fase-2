@@ -66,7 +66,7 @@ class EASEConfig:
             raise ValueError("device deve ser 'auto' ou 'cpu'")
 
 
-def _resolve_device(device: str) -> torch.device:
+def resolve_device(device: str) -> torch.device:
     """Resolve o dispositivo de computacao a partir da configuracao.
 
     A inversao de matriz sempre usa CPU (LAPACK); o dispositivo retornado
@@ -101,7 +101,7 @@ class EASETorchRecommender(RecommenderModel):
             config: Hiperparametros do EASE^. Usa defaults se None.
         """
         self._config = config or EASEConfig()
-        self._device = _resolve_device(self._config.device)
+        self._device = resolve_device(self._config.device)
         self._user_to_idx: dict[str, int] = {}
         self._idx_to_user: dict[int, str] = {}
         self._item_to_idx: dict[str, int] = {}
@@ -120,18 +120,18 @@ class EASETorchRecommender(RecommenderModel):
             interactions: Iteravel de pares (user_id, item_id) como strings.
         """
         materialized = list(interactions)
-        self._build_mappings(materialized)
-        self._build_seen_items(materialized)
-        x_sparse = self._build_sparse_matrix(materialized)
-        x_filtered, top_indices = self._filter_top_items(x_sparse)
+        self.build_mappings(materialized)
+        self.build_seen_items(materialized)
+        x_sparse = self.build_sparse_matrix(materialized)
+        x_filtered, top_indices = self.filter_top_items(x_sparse)
         self._top_item_indices = top_indices
         self._item_popularity = np.asarray(x_sparse.sum(axis=0)).ravel()
         self._item_log_popularity = np.log1p(self._item_popularity)
-        self._most_popular_items = self._compute_popular_ranking()
-        gram = self._build_gram(x_filtered)
-        p_inv = self._invert_gram(gram)
-        b_cpu = self._build_b_matrix(p_inv)
-        self._b_matrix = self._move_b_to_device(b_cpu)
+        self._most_popular_items = self.compute_popular_ranking()
+        gram = self.build_gram(x_filtered)
+        p_inv = self.invert_gram(gram)
+        b_cpu = self.build_b_matrix(p_inv)
+        self._b_matrix = self.move_b_to_device(b_cpu)
 
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
         """Retorna os itens de maior pontuacao ainda nao consumidos.
@@ -148,8 +148,8 @@ class EASETorchRecommender(RecommenderModel):
         recommendation_limit = limit if limit is not None else 10
         user_idx = self._user_to_idx.get(user_id)
         if user_idx is None:
-            return self._recommend_cold_start(recommendation_limit)
-        return self._recommend_warm_start(user_idx, recommendation_limit)
+            return self.recommend_cold_start(recommendation_limit)
+        return self.recommend_warm_start(user_idx, recommendation_limit)
 
     def recommend_batch(
         self, user_ids: list[str], limit: int | None = None
@@ -174,19 +174,19 @@ class EASETorchRecommender(RecommenderModel):
         for uid in user_ids:
             idx = self._user_to_idx.get(uid)
             if idx is None:
-                results[uid] = self._recommend_cold_start(recommendation_limit)
+                results[uid] = self.recommend_cold_start(recommendation_limit)
             else:
                 warm_users.append((uid, idx))
         batch_size = self._config.batch_size
         for start in range(0, len(warm_users), batch_size):
             batch = warm_users[start : start + batch_size]
-            batch_results = self._recommend_batch_warm(batch, recommendation_limit)
+            batch_results = self.recommend_batch_warm(batch, recommendation_limit)
             results.update(batch_results)
         return results
 
     # --- Construcao de mapeamentos e matrizes ---
 
-    def _build_mappings(self, interactions: list[Interaction]) -> None:
+    def build_mappings(self, interactions: list[Interaction]) -> None:
         """Constroi mapeamentos bidirecionais str<->int para usuarios e itens."""
         user_ids = {uid for uid, _ in interactions}
         item_ids = {iid for _, iid in interactions}
@@ -195,7 +195,7 @@ class EASETorchRecommender(RecommenderModel):
         self._item_to_idx = {iid: idx for idx, iid in enumerate(sorted(item_ids))}
         self._idx_to_item = {idx: iid for iid, idx in self._item_to_idx.items()}
 
-    def _build_seen_items(self, interactions: list[Interaction]) -> None:
+    def build_seen_items(self, interactions: list[Interaction]) -> None:
         """Registra o conjunto de itens ja consumidos por usuario."""
         self._seen_items.clear()
         for user_id, item_id in interactions:
@@ -204,7 +204,7 @@ class EASETorchRecommender(RecommenderModel):
             if user_idx is not None and item_idx is not None:
                 self._seen_items.setdefault(user_idx, set()).add(item_idx)
 
-    def _build_sparse_matrix(self, interactions: list[Interaction]) -> sp.csr_matrix:
+    def build_sparse_matrix(self, interactions: list[Interaction]) -> sp.csr_matrix:
         """Constroi a matriz esparsa user-item com feedback implicito binario."""
         rows, cols = [], []
         for user_id, item_id in interactions:
@@ -216,7 +216,7 @@ class EASETorchRecommender(RecommenderModel):
         shape = (len(self._user_to_idx), len(self._item_to_idx))
         return sp.csr_matrix((data, (rows, cols)), shape=shape)
 
-    def _filter_top_items(
+    def filter_top_items(
         self, x_sparse: sp.csr_matrix
     ) -> tuple[sp.csr_matrix, np.ndarray]:
         """Filtra o catalogo aos itens mais populares se max_items > 0."""
@@ -227,25 +227,25 @@ class EASETorchRecommender(RecommenderModel):
         top_indices = np.argsort(-popularity)[: self._config.max_items]
         return x_sparse[:, top_indices].astype(np.float64).tocsr(), top_indices
 
-    def _build_gram(self, x_filtered: sp.csr_matrix) -> torch.Tensor:
+    def build_gram(self, x_filtered: sp.csr_matrix) -> torch.Tensor:
         """Constroi a matriz de Gram G = X^T X + lambda * I em CPU (LAPACK)."""
         n_items = x_filtered.shape[1]
         gram_np = (x_filtered.T @ x_filtered).toarray()
         gram_np += self._config.lambda_reg * np.eye(n_items, dtype=gram_np.dtype)
         return torch.from_numpy(gram_np)
 
-    def _invert_gram(self, gram: torch.Tensor) -> torch.Tensor:
+    def invert_gram(self, gram: torch.Tensor) -> torch.Tensor:
         """Inverte a matriz de Gram usando backend CPU (LAPACK)."""
         return torch.linalg.inv(gram)
 
-    def _build_b_matrix(self, p_inv: torch.Tensor) -> torch.Tensor:
+    def build_b_matrix(self, p_inv: torch.Tensor) -> torch.Tensor:
         """Constroi B = I - P / diag(P) e zera a diagonal."""
         diag_p = torch.diagonal(p_inv)
         b_matrix = torch.eye(p_inv.shape[0]) - p_inv / diag_p.unsqueeze(0)
         b_matrix.fill_diagonal_(0.0)
         return b_matrix
 
-    def _move_b_to_device(self, b_cpu: torch.Tensor) -> torch.Tensor:
+    def move_b_to_device(self, b_cpu: torch.Tensor) -> torch.Tensor:
         """Move B para o dispositivo, convertendo para float32 se necessario.
 
         MPS e CUDA nao suportam float64; a conversao para float32 e
@@ -255,7 +255,7 @@ class EASETorchRecommender(RecommenderModel):
             return b_cpu.to(self._device)
         return b_cpu.float().to(self._device)
 
-    def _compute_popular_ranking(self) -> list[int]:
+    def compute_popular_ranking(self) -> list[int]:
         """Retorna os indices dos itens ordenados por popularidade decrescente."""
         if self._item_popularity.size == 0:
             return []
@@ -263,18 +263,18 @@ class EASETorchRecommender(RecommenderModel):
 
     # --- Predicao ---
 
-    def _recommend_warm_start(self, user_idx: int, limit: int) -> list[str]:
+    def recommend_warm_start(self, user_idx: int, limit: int) -> list[str]:
         """Gera recomendacoes para usuario com historico de interacoes."""
         b_matrix = self._b_matrix
         if b_matrix is None:
-            return self._recommend_cold_start(limit)
+            return self.recommend_cold_start(limit)
         n_top = b_matrix.shape[0]
-        scores = self._compute_user_scores(user_idx)
-        self._exclude_seen_items(user_idx, scores)
+        scores = self.compute_user_scores(user_idx)
+        self.exclude_seen_items(user_idx, scores)
         top_indices = torch.topk(scores, min(limit, n_top)).indices.tolist()
         return [self._idx_to_item[int(self._top_item_indices[i])] for i in top_indices]
 
-    def _recommend_batch_warm(
+    def recommend_batch_warm(
         self, batch: list[tuple[str, int]], limit: int
     ) -> dict[str, list[str]]:
         """Gera recomendacoes em lote para usuarios com historico.
@@ -285,13 +285,13 @@ class EASETorchRecommender(RecommenderModel):
         """
         b_matrix = self._b_matrix
         if b_matrix is None:
-            return {uid: self._recommend_cold_start(limit) for uid, _ in batch}
+            return {uid: self.recommend_cold_start(limit) for uid, _ in batch}
         n_top = b_matrix.shape[0]
-        x_batch = self._build_batch_matrix(batch, n_top)
-        scores = self._compute_batch_scores(x_batch, b_matrix)
-        return self._extract_batch_topk(batch, scores, limit, n_top)
+        x_batch = self.build_batch_matrix(batch, n_top)
+        scores = self.compute_batch_scores(x_batch, b_matrix)
+        return self.extract_batch_topk(batch, scores, limit, n_top)
 
-    def _build_batch_matrix(
+    def build_batch_matrix(
         self, batch: list[tuple[str, int]], n_top: int
     ) -> torch.Tensor:
         """Constroi a matriz de interacoes do lote (users x top_items)."""
@@ -303,18 +303,18 @@ class EASETorchRecommender(RecommenderModel):
                     x_batch[row, pos] = 1.0
         return torch.from_numpy(x_batch)
 
-    def _compute_batch_scores(
+    def compute_batch_scores(
         self, x_batch: torch.Tensor, b_matrix: torch.Tensor
     ) -> torch.Tensor:
         """Computa scores do lote via produto matricial no dispositivo."""
-        x_dev = self._to_device_dtype(x_batch)
+        x_dev = self.to_device_dtype(x_batch)
         scores = x_dev @ b_matrix
         if self._config.popularity_blending > 0:
-            pop = self._popularity_tensor(b_matrix)
+            pop = self.popularity_tensor(b_matrix)
             scores = scores + self._config.popularity_blending * pop
         return scores.cpu()
 
-    def _extract_batch_topk(
+    def extract_batch_topk(
         self,
         batch: list[tuple[str, int]],
         scores: torch.Tensor,
@@ -325,7 +325,7 @@ class EASETorchRecommender(RecommenderModel):
         results: dict[str, list[str]] = {}
         for row, (uid, user_idx) in enumerate(batch):
             row_scores = scores[row].clone()
-            self._exclude_seen_items(user_idx, row_scores)
+            self.exclude_seen_items(user_idx, row_scores)
             k = min(limit, n_top)
             top_indices = torch.topk(row_scores, k).indices.tolist()
             results[uid] = [
@@ -333,7 +333,7 @@ class EASETorchRecommender(RecommenderModel):
             ]
         return results
 
-    def _compute_user_scores(self, user_idx: int) -> torch.Tensor:
+    def compute_user_scores(self, user_idx: int) -> torch.Tensor:
         """Calcula os scores do usuario via produto X_user @ B com blending."""
         b_matrix = self._b_matrix
         if b_matrix is None:
@@ -344,14 +344,14 @@ class EASETorchRecommender(RecommenderModel):
             pos = np.searchsorted(self._top_item_indices, item_idx)
             if pos < n_top and self._top_item_indices[pos] == item_idx:
                 user_row[pos] = 1.0
-        user_tensor = self._to_device_dtype(torch.from_numpy(user_row))
+        user_tensor = self.to_device_dtype(torch.from_numpy(user_row))
         scores = user_tensor @ self._b_matrix
         if self._config.popularity_blending > 0:
-            pop = self._popularity_tensor(self._b_matrix)
+            pop = self.popularity_tensor(self._b_matrix)
             scores = scores + self._config.popularity_blending * pop
         return scores.cpu()
 
-    def _to_device_dtype(self, tensor: torch.Tensor) -> torch.Tensor:
+    def to_device_dtype(self, tensor: torch.Tensor) -> torch.Tensor:
         """Move tensor para o dispositivo com dtype compativel.
 
         MPS e CUDA nao suportam float64; converte para float32 antes
@@ -361,13 +361,13 @@ class EASETorchRecommender(RecommenderModel):
             return tensor.to(self._device)
         return tensor.float().to(self._device)
 
-    def _popularity_tensor(self, ref_tensor: torch.Tensor) -> torch.Tensor:
+    def popularity_tensor(self, ref_tensor: torch.Tensor) -> torch.Tensor:
         """Cria tensor de popularidade no dispositivo e dtype do ref_tensor."""
         pop_np = self._item_log_popularity[self._top_item_indices]
         pop = torch.from_numpy(pop_np)
-        return self._to_device_dtype(pop)
+        return self.to_device_dtype(pop)
 
-    def _exclude_seen_items(self, user_idx: int, scores: torch.Tensor) -> None:
+    def exclude_seen_items(self, user_idx: int, scores: torch.Tensor) -> None:
         """Atribui -infinito aos itens ja consumidos pelo usuario."""
         seen = self._seen_items.get(user_idx, set())
         for item_idx in seen:
@@ -376,7 +376,7 @@ class EASETorchRecommender(RecommenderModel):
             if pos < len(top_arr) and top_arr[pos] == item_idx:
                 scores[pos] = float("-inf")
 
-    def _recommend_cold_start(self, limit: int) -> list[str]:
+    def recommend_cold_start(self, limit: int) -> list[str]:
         """Recomenda itens mais populares para usuarios sem historico."""
         recommended: list[str] = []
         for item_idx in self._most_popular_items[:limit]:

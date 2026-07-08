@@ -174,7 +174,7 @@ def run_ease_pipeline(  # noqa: PLR0913
     setup_mlflow(mlflow_config)
 
     interactions_df = load_interactions(data_dir)
-    train_interactions, ground_truth, _ = _split_chronological(
+    train_interactions, ground_truth, _ = split_chronological(
         interactions_df, test_ratio
     )
     dataset_version = safe_get_dataset_version()
@@ -191,8 +191,8 @@ def run_ease_pipeline(  # noqa: PLR0913
     model = factory.create(config)
 
     logger.info("Treinando EASE^ (lambda=%s, max_items=%s)...", lambda_reg, max_items)
-    train_time = _time_fit(model, train_interactions)
-    recommended, infer_time = _time_recommend(model, ground_truth, max(k_values))
+    train_time = time_fit(model, train_interactions)
+    recommended, infer_time = time_recommend(model, ground_truth, max(k_values))
     metrics = compute_recommender_metrics(ground_truth, recommended, k_values)
 
     result = ModelResult(
@@ -216,7 +216,7 @@ def run_ease_pipeline(  # noqa: PLR0913
         infer_time,
     )
 
-    _log_to_mlflow(
+    log_to_mlflow(
         model=model,
         result=result,
         config=config,
@@ -229,7 +229,7 @@ def run_ease_pipeline(  # noqa: PLR0913
         k_values=k_values,
     )
 
-    _save_ease_report(
+    save_ease_report(
         result=result,
         interactions_df=interactions_df,
         train_interactions=train_interactions,
@@ -242,7 +242,7 @@ def run_ease_pipeline(  # noqa: PLR0913
     return result
 
 
-def _split_chronological(
+def split_chronological(
     interactions_df: pd.DataFrame, test_ratio: float
 ) -> tuple[list[Interaction], dict[str, set[str]], dict[str, list[str]]]:
     """Divide interacoes usando split cronologico 3-way com warm-start filter.
@@ -278,14 +278,14 @@ def _split_chronological(
     )
 
 
-def _time_fit(model: Any, interactions: list[Interaction]) -> float:
+def time_fit(model: Any, interactions: list[Interaction]) -> float:
     """Mede o tempo de treino em segundos."""
     t0 = time.perf_counter()
     model.fit(interactions)
     return time.perf_counter() - t0
 
 
-def _time_recommend(
+def time_recommend(
     model: Any, ground_truth: dict[str, set[str]], limit: int
 ) -> tuple[dict[str, list[str]], float]:
     """Mede o tempo de inferencia e retorna recomendacoes."""
@@ -296,7 +296,7 @@ def _time_recommend(
     return recommended, time.perf_counter() - t0
 
 
-def _log_to_mlflow(  # noqa: PLR0913
+def log_to_mlflow(  # noqa: PLR0913
     model: Any,
     result: ModelResult,
     config: ModelConfig,
@@ -348,7 +348,7 @@ def _log_to_mlflow(  # noqa: PLR0913
         )
 
         log_system_info(random_seed)
-        log_metrics(_sanitize_metric_names(result.metrics))
+        log_metrics(sanitize_metric_names(result.metrics))
         log_input_data_summary(
             build_input_data_summary(
                 interactions_df=interactions_df,
@@ -399,7 +399,7 @@ def _log_to_mlflow(  # noqa: PLR0913
     logger.info("Run MLflow registrada para EASE^ no experimento dedicado")
 
 
-def _save_ease_report(  # noqa: PLR0913
+def save_ease_report(  # noqa: PLR0913
     result: ModelResult,
     interactions_df: pd.DataFrame,
     train_interactions: list[Interaction],
@@ -440,7 +440,7 @@ def _save_ease_report(  # noqa: PLR0913
     logger.info("Relatorio markdown do EASE^ salvo em: %s", report_path)
 
 
-def _sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
+def sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
     """Sanitiza nomes de metricas para compatibilidade com MLflow.
 
     MLflow nao aceita '@' em nomes de metricas; substitui por '_at_'.

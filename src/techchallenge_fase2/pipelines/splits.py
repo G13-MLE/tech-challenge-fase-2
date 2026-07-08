@@ -81,9 +81,9 @@ def chronological_holdout_split(
     n_train = n_total - n_test
     train_df = ordered.iloc[:n_train]
     test_df = ordered.iloc[n_train:]
-    train_interactions = _materialize_interactions(train_df)
-    test_interactions = _materialize_interactions(test_df)
-    ground_truth = _build_ground_truth(test_df)
+    train_interactions = materialize_interactions(train_df)
+    test_interactions = materialize_interactions(test_df)
+    ground_truth = build_ground_truth(test_df)
     cutoff = train_df[timestamp_col].iloc[-1] if n_train > 0 else pd.Timestamp.min
     return ChronologicalSplit(
         train_interactions=train_interactions,
@@ -124,11 +124,11 @@ def chronological_train_val_test_split(
     train_df = ordered.iloc[:n_train]
     val_df = ordered.iloc[n_train : n_train + n_val]
     test_df = ordered.iloc[n_train + n_val :]
-    train_interactions = _materialize_interactions(train_df)
-    val_interactions = _materialize_interactions(val_df)
-    test_interactions = _materialize_interactions(test_df)
-    val_ground_truth = _build_ground_truth(val_df)
-    test_ground_truth = _build_ground_truth(test_df)
+    train_interactions = materialize_interactions(train_df)
+    val_interactions = materialize_interactions(val_df)
+    test_interactions = materialize_interactions(test_df)
+    val_ground_truth = build_ground_truth(val_df)
+    test_ground_truth = build_ground_truth(test_df)
     train_cutoff = train_df[timestamp_col].iloc[-1] if n_train > 0 else pd.Timestamp.min
     val_cutoff = val_df[timestamp_col].iloc[-1] if len(val_df) > 0 else pd.Timestamp.min
     return ChronologicalThreeWaySplit(
@@ -192,10 +192,10 @@ def filter_warm_start_three_way(
     """
     train_users = {uid for uid, _ in split.train_interactions}
     train_items = {iid for _, iid in split.train_interactions}
-    filtered_val_truth, filtered_val = _filter_ground_truth(
+    filtered_val_truth, filtered_val = filter_ground_truth(
         split.val_ground_truth, train_users, train_items
     )
-    filtered_test_truth, filtered_test = _filter_ground_truth(
+    filtered_test_truth, filtered_test = filter_ground_truth(
         split.test_ground_truth, train_users, train_items
     )
     return ChronologicalThreeWaySplit(
@@ -209,7 +209,7 @@ def filter_warm_start_three_way(
     )
 
 
-def _filter_ground_truth(
+def filter_ground_truth(
     ground_truth: dict[str, set[str]],
     train_users: set[str],
     train_items: set[str],
@@ -228,12 +228,12 @@ def _filter_ground_truth(
     return filtered_truth, filtered_interactions
 
 
-def _materialize_interactions(df: pd.DataFrame) -> list[Interaction]:
+def materialize_interactions(df: pd.DataFrame) -> list[Interaction]:
     """Converte um DataFrame em lista de tuplas (user_id, item_id)."""
     return [(str(row.user_id), str(row.item_id)) for row in df.itertuples(index=False)]
 
 
-def _build_ground_truth(test_df: pd.DataFrame) -> dict[str, set[str]]:
+def build_ground_truth(test_df: pd.DataFrame) -> dict[str, set[str]]:
     """Agrupa itens relevantes por usuario a partir do DataFrame de teste."""
     truth: dict[str, set[str]] = {}
     grouped = test_df.groupby("user_id")["item_id"].apply(set)

@@ -299,12 +299,12 @@ def log_evaluation_run(
         num_users=int(checkpoint["num_users"]),
         num_items=int(checkpoint["num_items"]),
         num_evaluated_users=num_evaluated_users,
-        **_card_metrics(metrics, params.evaluation.top_k),
+        **card_metrics(metrics, params.evaluation.top_k),
     )
     mlflow.log_dict(card, "model_card.json")
 
 
-def _card_metrics(metrics: dict[str, float], top_k: int) -> dict[str, float]:
+def card_metrics(metrics: dict[str, float], top_k: int) -> dict[str, float]:
     """Mapeia metricas agregadas para as chaves esperadas pelo Model Card."""
     return {
         f"hit_rate@{top_k}": metrics.get(f"hit_rate_at_{top_k}", 0.0),

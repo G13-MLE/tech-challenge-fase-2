@@ -14,7 +14,7 @@ from techchallenge_fase2.pipelines.report import (
 )
 
 
-def _make_result(
+def make_result(
     name: str = "popularity",
     role: str = "baseline",
     precision: float = 0.1,
@@ -52,13 +52,13 @@ class TestBuildComparisonTable:
 
     def test_single_model_produces_table(self) -> None:
         """Tabela com um modelo contem o nome do modelo."""
-        result = _make_result(name="popularity")
+        result = make_result(name="popularity")
         table = build_comparison_table([result], k_values=(10,))
         assert "popularity" in table
 
     def test_table_contains_metric_headers(self) -> None:
         """Tabela contem cabecalhos das metricas."""
-        result = _make_result(
+        result = make_result(
             name="ease_torch",
             role="champion_candidate",
         )
@@ -70,14 +70,14 @@ class TestBuildComparisonTable:
 
     def test_table_ranks_by_harmonic_mean(self) -> None:
         """Modelos sao ordenados por media harmonica decrescente."""
-        best = _make_result(
+        best = make_result(
             name="best",
             precision=0.5,
             recall=0.5,
             ndcg=0.5,
             map_val=0.5,
         )
-        worst = _make_result(
+        worst = make_result(
             name="worst",
             precision=0.1,
             recall=0.05,
@@ -102,12 +102,12 @@ class TestBuildChampionSection:
 
     def test_declares_best_model_as_champion(self) -> None:
         """Campeao e o modelo com maior media harmonica."""
-        best = _make_result(
+        best = make_result(
             name="ease_torch",
             role="champion_candidate",
             precision=0.5,
         )
-        worst = _make_result(
+        worst = make_result(
             name="random",
             role="baseline",
             precision=0.01,
@@ -118,7 +118,7 @@ class TestBuildChampionSection:
 
     def test_shows_advantage_over_runner_up(self) -> None:
         """Secao mostra vantagem sobre o segundo colocado."""
-        best = _make_result(
+        best = make_result(
             name="ease_torch",
             role="champion_candidate",
             precision=0.5,
@@ -126,7 +126,7 @@ class TestBuildChampionSection:
             ndcg=0.5,
             map_val=0.5,
         )
-        worst = _make_result(
+        worst = make_result(
             name="random",
             role="baseline",
             precision=0.1,
@@ -147,13 +147,13 @@ class TestBuildTradeoffSection:
 
     def test_contains_model_names(self) -> None:
         """Secao de trade-offs contem nomes dos modelos."""
-        result = _make_result(name="popularity")
+        result = make_result(name="popularity")
         section = build_tradeoff_section([result], k=10)
         assert "popularity" in section
 
     def test_contains_metric_headers(self) -> None:
         """Secao contem cabecalhos de metricas."""
-        result = _make_result(name="popularity")
+        result = make_result(name="popularity")
         section = build_tradeoff_section([result], k=10)
         assert "Precision" in section
 
@@ -224,8 +224,8 @@ class TestGenerateMarkdownReport:
     def test_report_contains_model_names(self) -> None:
         """Relatorio contem nomes dos modelos."""
         results = [
-            _make_result(name="popularity"),
-            _make_result(name="random", precision=0.01),
+            make_result(name="popularity"),
+            make_result(name="random", precision=0.01),
         ]
         report = generate_markdown_report(results=results)
         assert "popularity" in report
@@ -233,7 +233,7 @@ class TestGenerateMarkdownReport:
 
     def test_report_has_all_sections(self) -> None:
         """Relatorio contem todas as secoes esperadas."""
-        result = _make_result(
+        result = make_result(
             name="ease_torch",
             role="champion_candidate",
         )
@@ -245,7 +245,7 @@ class TestGenerateMarkdownReport:
     def test_report_includes_data_section(self) -> None:
         """Relatorio inclui secao de dados."""
         report = generate_markdown_report(
-            results=[_make_result()],
+            results=[make_result()],
             num_users=1000,
             num_items=500,
             num_interactions=5000,

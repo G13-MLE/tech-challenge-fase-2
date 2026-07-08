@@ -35,7 +35,7 @@ ROLE_LABELS: dict[str, str] = {
 }
 
 
-def _extract_k_values_from_metrics(
+def extract_k_values_from_metrics(
     metrics: dict[str, float],
 ) -> list[int]:
     """Extrai valores de K presentes nas chaves de metricas."""
@@ -50,11 +50,11 @@ def _extract_k_values_from_metrics(
     return sorted(k_values)
 
 
-def _get_k_values(results: list[ModelResult]) -> list[int]:
+def get_k_values(results: list[ModelResult]) -> list[int]:
     """Extrai valores de K presentes nos resultados."""
     k_values: set[int] = set()
     for result in results:
-        k_values.update(_extract_k_values_from_metrics(result.metrics))
+        k_values.update(extract_k_values_from_metrics(result.metrics))
     return sorted(k_values)
 
 
@@ -76,7 +76,7 @@ def build_comparison_table(
         return "_Nenhum resultado disponivel._"
 
     if k_values is None:
-        detected_ks = _get_k_values(results)
+        detected_ks = get_k_values(results)
         k_values = tuple(detected_ks) if detected_ks else (10,)
 
     ranked = rank_models(results, k=k_values[0] if k_values else 10)
@@ -154,7 +154,7 @@ def build_champion_section(
     # Metricas detalhadas do campeao
     lines.append("| Metrica | Valor |")
     lines.append("| --- | --- |")
-    champion_k_values = _extract_k_values_from_metrics(champion.metrics)
+    champion_k_values = extract_k_values_from_metrics(champion.metrics)
     for metric in CANONICAL_METRICS:
         label = METRIC_LABELS.get(metric, metric)
         for k_val in champion_k_values:

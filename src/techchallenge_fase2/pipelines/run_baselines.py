@@ -294,7 +294,7 @@ def temporal_holdout_split(
     if timestamp_col not in interactions_df.columns:
         split = chronological_holdout_split(interactions_df, test_ratio, timestamp_col)
         split = filter_warm_start(split)
-        all_items_by_user = _group_items_by_user(interactions_df)
+        all_items_by_user = group_items_by_user(interactions_df)
         return (
             split.train_interactions,
             split.ground_truth,
@@ -305,7 +305,7 @@ def temporal_holdout_split(
         interactions_df, val_ratio=val_ratio, test_ratio=test_ratio
     )
     split = filter_warm_start_three_way(split)
-    all_items_by_user = _group_items_by_user(interactions_df)
+    all_items_by_user = group_items_by_user(interactions_df)
     return (
         split.train_interactions,
         split.test_ground_truth,
@@ -313,7 +313,7 @@ def temporal_holdout_split(
     )
 
 
-def _group_items_by_user(df: pd.DataFrame) -> dict[str, list[str]]:
+def group_items_by_user(df: pd.DataFrame) -> dict[str, list[str]]:
     """Agrupa itens por usuario mantendo a ordem de ocorrencia."""
     grouped: dict[str, list[str]] = {}
     for row in df.itertuples(index=False):
@@ -347,13 +347,11 @@ def evaluate_baselines(  # noqa: PLR0913
     trained_models: dict[str, Any] = {}
 
     for model_name in model_names:
-        config = _build_model_config(model_name, k_values)
+        config = build_model_config(model_name, k_values)
         model = factory.create(config)
         try:
-            train_time = _time_fit(model, train_interactions)
-            recommended, infer_time = _time_recommend(
-                model, ground_truth, max(k_values)
-            )
+            train_time = time_fit(model, train_interactions)
+            recommended, infer_time = time_recommend(model, ground_truth, max(k_values))
             metrics = compute_recommender_metrics(ground_truth, recommended, k_values)
         except Exception as exc:
             logger.warning("Modelo %s falhou (%s); pulando.", model_name, exc)
@@ -385,7 +383,7 @@ def evaluate_baselines(  # noqa: PLR0913
     return model_results, trained_models
 
 
-def _build_model_config(model_name: str, k_values: tuple[int, ...]) -> ModelConfig:
+def build_model_config(model_name: str, k_values: tuple[int, ...]) -> ModelConfig:
     """Constroi a configuracao apropriada para cada modelo."""
     if model_name == ModelType.EASE_TORCH.value:
         return ModelConfig(
@@ -402,14 +400,14 @@ def _build_model_config(model_name: str, k_values: tuple[int, ...]) -> ModelConf
     )
 
 
-def _time_fit(model: Any, interactions: list[Interaction]) -> float:
+def time_fit(model: Any, interactions: list[Interaction]) -> float:
     """Mede o tempo de treino do modelo em segundos."""
     t0 = time.perf_counter()
     model.fit(interactions)
     return time.perf_counter() - t0
 
 
-def _time_recommend(
+def time_recommend(
     model: Any, ground_truth: dict[str, set[str]], limit: int
 ) -> tuple[dict[str, list[str]], float]:
     """Mede o tempo total de inferencia e retorna recomendacoes."""
@@ -420,13 +418,13 @@ def _time_recommend(
     return recommended, time.perf_counter() - t0
 
 
-def _encode_role(role: str) -> int:
+def encode_role(role: str) -> int:
     """Codifica o papel do modelo como inteiro para serializacao no MLflow."""
     mapping = {"baseline": 0, "baseline_neural": 1, "champion_candidate": 2}
     return mapping.get(role, 0)
 
 
-def _sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
+def sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
     """Sanitiza nomes de metricas para compatibilidade com MLflow.
 
     MLflow nao aceita '@' em nomes de metricas; substitui por '_at_'.
@@ -534,7 +532,7 @@ def run_baseline_pipeline(  # noqa: PLR0913
             log_system_info(random_seed)
 
             # Log de metricas (sanitiza nomes para MLflow: '@' -> '_at_')
-            log_metrics(_sanitize_metric_names(metrics))
+            log_metrics(sanitize_metric_names(metrics))
 
             # Log do resumo dos dados de entrada como artefato
             log_input_data_summary(input_data_summary)
@@ -611,7 +609,7 @@ def run_baseline_pipeline(  # noqa: PLR0913
 
     # Declara o campeao com base no criterio de media harmonica em K=10
     champion, runner_up = declare_champion(model_results, k=CHAMPION_K)
-    _log_champion_summary(champion, runner_up)
+    log_champion_summary(champion, runner_up)
 
     # Gera relatorio markdown automatico
     report_content = generate_markdown_report(
@@ -654,7 +652,7 @@ def run_baseline_pipeline(  # noqa: PLR0913
     return comparison_df
 
 
-def _log_champion_summary(
+def log_champion_summary(
     champion: ModelResult | None, runner_up: ModelResult | None
 ) -> None:
     """Registra no log o resumo do campeao declarado."""

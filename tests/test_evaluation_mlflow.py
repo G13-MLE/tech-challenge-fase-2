@@ -24,7 +24,7 @@ from techchallenge_fase2.pipelines.config import (
 )
 
 
-def _build_params(tmp_path: Path) -> PipelineParams:
+def build_params(tmp_path: Path) -> PipelineParams:
     """Constroi PipelineParams valido apontando para tmp_path."""
     return PipelineParams(
         paths=PathParams(
@@ -60,7 +60,7 @@ def _build_params(tmp_path: Path) -> PipelineParams:
     )
 
 
-def _write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
+def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
     """Escreve um parquet minimo de features com colunas user_index/item_index."""
     rows: list[dict[str, int]] = []
     for user in range(num_users):
@@ -69,7 +69,7 @@ def _write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
     pd.DataFrame(rows).to_parquet(path, index=False)
 
 
-def _build_checkpoint(num_users: int = 4, num_items: int = 4) -> dict[str, Any]:
+def build_checkpoint(num_users: int = 4, num_items: int = 4) -> dict[str, Any]:
     """Constroi um checkpoint minimo compativel com load_model."""
     from techchallenge_fase2.models.ncf import (
         NCFConfig,
@@ -95,10 +95,10 @@ def _build_checkpoint(num_users: int = 4, num_items: int = 4) -> dict[str, Any]:
 @pytest.fixture
 def setup_eval_env(tmp_path: Path) -> tuple[PipelineParams, dict[str, Any]]:
     """Prepara features, checkpoint e params para os testes de avaliacao."""
-    params = _build_params(tmp_path)
-    _write_features(params.paths.train_features)
-    _write_features(params.paths.test_features)
-    checkpoint = _build_checkpoint()
+    params = build_params(tmp_path)
+    write_features(params.paths.train_features)
+    write_features(params.paths.test_features)
+    checkpoint = build_checkpoint()
     return params, checkpoint
 
 
@@ -140,7 +140,7 @@ class TestCardMetrics:
             "recall_at_5": 0.2,
             "evaluated_users": 10.0,
         }
-        result = evaluation_module._card_metrics(metrics, top_k=5)
+        result = evaluation_module.card_metrics(metrics, top_k=5)
         assert result["hit_rate@5"] == pytest.approx(0.6)
         assert result["map@5"] == pytest.approx(0.4)
         assert result["ndcg@5"] == pytest.approx(0.5)

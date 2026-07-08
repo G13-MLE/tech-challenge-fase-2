@@ -184,10 +184,10 @@ class NeuralRecommender(RecommenderModel):
             interactions: Iteravel de pares (user_id, item_id).
         """
         materialized = list(interactions)
-        if self._needs_string_mapping(materialized):
-            self._fit_with_string_ids(materialized)
+        if self.needs_string_mapping(materialized):
+            self.fit_with_string_ids(materialized)
         else:
-            self._fit_with_integer_ids(materialized)
+            self.fit_with_integer_ids(materialized)
 
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
         """Retorna os itens de maior pontuacao ainda nao consumidos.
@@ -199,9 +199,9 @@ class NeuralRecommender(RecommenderModel):
         Returns:
             Identificadores dos itens recomendados, ordenados por relevancia.
         """
-        user_idx = self._resolve_user_idx(user_id)
+        user_idx = self.resolve_user_idx(user_id)
         if user_idx is None:
-            return self._recommend_cold_start(limit)
+            return self.recommend_cold_start(limit)
         scores = score_candidates(self._model, user_idx, self._model.config.num_items)
         for item_idx in self._user_history.get(user_idx, set()):
             scores[item_idx] = float("-inf")
@@ -211,12 +211,12 @@ class NeuralRecommender(RecommenderModel):
         for position, item in enumerate(top_items.tolist()):
             if torch.isinf(top_scores[position]):
                 continue
-            recommendations.append(self._format_item_id(int(item)))
+            recommendations.append(self.format_item_id(int(item)))
         return recommendations
 
     # --- Treino inline para IDs string ---
 
-    def _needs_string_mapping(self, interactions: list[Interaction]) -> bool:
+    def needs_string_mapping(self, interactions: list[Interaction]) -> bool:
         """Detecta se os IDs precisam mapeamento str->int."""
         if not interactions:
             return False
@@ -228,16 +228,16 @@ class NeuralRecommender(RecommenderModel):
         except ValueError:
             return True
 
-    def _fit_with_string_ids(self, interactions: list[Interaction]) -> None:
+    def fit_with_string_ids(self, interactions: list[Interaction]) -> None:
         """Mapeia str->int, reconstrui NCF e treina inline."""
-        self._build_string_mappings(interactions)
-        numeric_interactions = self._to_numeric_interactions(interactions)
-        self._rebuild_model_for_string_ids()
-        self._train_inline(numeric_interactions)
-        self._register_history(numeric_interactions)
+        self.build_string_mappings(interactions)
+        numeric_interactions = self.to_numeric_interactions(interactions)
+        self.rebuild_model_for_string_ids()
+        self.train_inline(numeric_interactions)
+        self.register_history(numeric_interactions)
         self._was_trained_inline = True
 
-    def _build_string_mappings(self, interactions: list[Interaction]) -> None:
+    def build_string_mappings(self, interactions: list[Interaction]) -> None:
         """Constroi mapeamentos bidirecionais str<->int."""
         user_ids = {uid for uid, _ in interactions}
         item_ids = {iid for _, iid in interactions}
@@ -246,7 +246,7 @@ class NeuralRecommender(RecommenderModel):
         self._item_to_idx = {iid: idx for idx, iid in enumerate(sorted(item_ids))}
         self._idx_to_item = {idx: iid for iid, idx in self._item_to_idx.items()}
 
-    def _to_numeric_interactions(
+    def to_numeric_interactions(
         self, interactions: list[Interaction]
     ) -> list[tuple[int, int]]:
         """Converte interacoes string para pares (user_idx, item_idx)."""
@@ -258,7 +258,7 @@ class NeuralRecommender(RecommenderModel):
                 numeric.append((user_idx, item_idx))
         return numeric
 
-    def _rebuild_model_for_string_ids(self) -> None:
+    def rebuild_model_for_string_ids(self) -> None:
         """Reconstroi o NCF com dimensoes derivadas do mapeamento."""
         config = NCFConfig(
             num_users=len(self._user_to_idx),
@@ -269,7 +269,7 @@ class NeuralRecommender(RecommenderModel):
         )
         self._model = NeuralCollaborativeFiltering(config)
 
-    def _train_inline(self, numeric_interactions: list[tuple[int, int]]) -> None:
+    def train_inline(self, numeric_interactions: list[tuple[int, int]]) -> None:
         """Treina o NCF com BCE loss e negativos amostrados por usuario."""
         cfg = self._training_config
         torch.manual_seed(cfg.random_seed)
@@ -280,16 +280,16 @@ class NeuralRecommender(RecommenderModel):
         criterion = nn.BCEWithLogitsLoss()
         self._model.train()
         positives = numeric_interactions
-        negatives = self._sample_negatives(positives)
+        negatives = self.sample_negatives(positives)
         dataset = positives + negatives
         labels = [1.0] * len(positives) + [0.0] * len(negatives)
         for _epoch in range(cfg.epochs):
-            self._run_training_epoch(
+            self.run_training_epoch(
                 optimizer, criterion, dataset, labels, cfg.batch_size
             )
             scheduler.step()
 
-    def _sample_negatives(
+    def sample_negatives(
         self, positives: list[tuple[int, int]]
     ) -> list[tuple[int, int]]:
         """Amostra negativos por usuario, excluindo itens do historico positivo.
@@ -322,7 +322,7 @@ class NeuralRecommender(RecommenderModel):
                 negatives.append((user_idx, neg_item))
         return negatives
 
-    def _run_training_epoch(
+    def run_training_epoch(
         self,
         optimizer: torch.optim.Optimizer,
         criterion: nn.Module,
@@ -345,7 +345,7 @@ class NeuralRecommender(RecommenderModel):
 
     # --- Modo IDs inteiros (compatibilidade com pipeline DVC) ---
 
-    def _fit_with_integer_ids(self, interactions: list[Interaction]) -> None:
+    def fit_with_integer_ids(self, interactions: list[Interaction]) -> None:
         """Registra historico assumindo IDs ja codificados como inteiros."""
         for user_str, item_str in interactions:
             user_idx, item_idx = int(user_str), int(item_str)
@@ -353,7 +353,7 @@ class NeuralRecommender(RecommenderModel):
 
     # --- Predicao ---
 
-    def _resolve_user_idx(self, user_id: str) -> int | None:
+    def resolve_user_idx(self, user_id: str) -> int | None:
         """Converte user_id para indice interno, ou None se desconhecido."""
         if self._was_trained_inline:
             return self._user_to_idx.get(user_id)
@@ -362,18 +362,18 @@ class NeuralRecommender(RecommenderModel):
         except ValueError:
             return None
 
-    def _format_item_id(self, item_idx: int) -> str:
+    def format_item_id(self, item_idx: int) -> str:
         """Converte indice interno do item de volta para string."""
         if self._was_trained_inline:
             return self._idx_to_item.get(item_idx, str(item_idx))
         return str(item_idx)
 
-    def _recommend_cold_start(self, limit: int | None) -> list[str]:
+    def recommend_cold_start(self, limit: int | None) -> list[str]:
         """Recomendacao para usuario desconhecido: retorna lista vazia."""
         _ = limit
         return []
 
-    def _register_history(self, numeric_interactions: list[tuple[int, int]]) -> None:
+    def register_history(self, numeric_interactions: list[tuple[int, int]]) -> None:
         """Registra itens ja consumidos por usuario (indices internos)."""
         for user_idx, item_idx in numeric_interactions:
             self._user_history.setdefault(user_idx, set()).add(item_idx)

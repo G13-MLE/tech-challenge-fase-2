@@ -25,7 +25,7 @@ from techchallenge_fase2.pipelines.config import (
 from techchallenge_fase2.training.trainer import TrainingHistory
 
 
-def _build_params(tmp_path: Path) -> PipelineParams:
+def build_params(tmp_path: Path) -> PipelineParams:
     """Constroi PipelineParams valido apontando para tmp_path."""
     return PipelineParams(
         paths=PathParams(
@@ -61,7 +61,7 @@ def _build_params(tmp_path: Path) -> PipelineParams:
     )
 
 
-def _write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
+def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
     """Escreve um parquet minimo de features com colunas user_index/item_index."""
     rows: list[dict[str, int]] = []
     for user in range(num_users):
@@ -70,7 +70,7 @@ def _write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
     pd.DataFrame(rows).to_parquet(path, index=False)
 
 
-def _write_mappings(path: Path, users: int = 4, items: int = 4) -> None:
+def write_mappings(path: Path, users: int = 4, items: int = 4) -> None:
     """Escreve o arquivo mappings.json minimo consumido pelo treino."""
     path.write_text(
         json.dumps(
@@ -86,10 +86,10 @@ def _write_mappings(path: Path, users: int = 4, items: int = 4) -> None:
 @pytest.fixture
 def setup_training_env(tmp_path: Path) -> tuple[PipelineParams, Path]:
     """Prepara features, mappings e params para os testes de treino."""
-    params = _build_params(tmp_path)
-    _write_features(params.paths.train_features)
-    _write_features(params.paths.validation_features)
-    _write_mappings(params.paths.mappings)
+    params = build_params(tmp_path)
+    write_features(params.paths.train_features)
+    write_features(params.paths.validation_features)
+    write_mappings(params.paths.mappings)
     params.paths.checkpoint_dir.mkdir(parents=True, exist_ok=True)
     params.paths.model_checkpoint.parent.mkdir(parents=True, exist_ok=True)
     return params, tmp_path

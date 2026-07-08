@@ -8,7 +8,7 @@ from techchallenge_fase2.pipelines.model_result import (
 )
 
 
-def _make_result(
+def make_result(
     name: str = "popularity",
     role: str = "baseline",
     precision: float = 0.1,
@@ -41,12 +41,12 @@ class TestModelResult:
 
     def test_metric_at_k_returns_correct_value(self) -> None:
         """metric_at_k retorna o valor da metrica no K especificado."""
-        result = _make_result(precision=0.15, k=10)
+        result = make_result(precision=0.15, k=10)
         assert result.metric_at_k("precision", 10) == 0.15
 
     def test_metric_at_k_returns_zero_for_missing_key(self) -> None:
         """metric_at_k retorna 0.0 para chave inexistente."""
-        result = _make_result(k=10)
+        result = make_result(k=10)
         assert result.metric_at_k("precision", 5) == 0.0
 
     def test_harmonic_mean_at_k_computes_correctly(self) -> None:
@@ -97,7 +97,7 @@ class TestModelResult:
 
     def test_to_comparison_dict_includes_all_fields(self) -> None:
         """to_comparison_dict inclui model, metricas, tempos e h-mean."""
-        result = _make_result(name="popularity", k=10)
+        result = make_result(name="popularity", k=10)
         d = result.to_comparison_dict()
         assert d["model"] == "popularity"
         assert d["model_role"] == "baseline"
@@ -109,7 +109,7 @@ class TestModelResult:
 
     def test_frozen_dataclass_is_immutable(self) -> None:
         """ModelResult e imutavel (frozen=True)."""
-        result = _make_result()
+        result = make_result()
         try:
             result.model_name = "changed"  # type: ignore[misc]
             raise AssertionError("Deveria ter lancado FrozenInstanceError")
@@ -124,21 +124,21 @@ class TestRankModels:
         self,
     ) -> None:
         """rank_models ordena por media harmonica decrescente."""
-        best = _make_result(
+        best = make_result(
             name="best",
             precision=0.5,
             recall=0.5,
             ndcg=0.5,
             map_val=0.5,
         )
-        worst = _make_result(
+        worst = make_result(
             name="worst",
             precision=0.1,
             recall=0.1,
             ndcg=0.1,
             map_val=0.1,
         )
-        mid = _make_result(
+        mid = make_result(
             name="mid",
             precision=0.3,
             recall=0.3,
@@ -163,12 +163,12 @@ class TestDeclareChampion:
         self,
     ) -> None:
         """declare_champion retorna campeao e segundo colocado."""
-        best = _make_result(
+        best = make_result(
             name="ease_torch",
             role="champion_candidate",
             precision=0.5,
         )
-        worst = _make_result(
+        worst = make_result(
             name="random",
             role="baseline",
             precision=0.01,
@@ -190,7 +190,7 @@ class TestDeclareChampion:
 
     def test_declare_champion_single_model(self) -> None:
         """declare_champion com unico modelo retorna runner_up None."""
-        result = _make_result(name="popularity")
+        result = make_result(name="popularity")
         champion, runner_up = declare_champion([result], k=10)
         assert champion is not None
         assert champion.model_name == "popularity"
@@ -202,14 +202,14 @@ class TestComputeHarmonicMeanAtK:
 
     def test_computes_for_each_model(self) -> None:
         """compute_harmonic_mean_at_k calcula para cada modelo."""
-        r1 = _make_result(
+        r1 = make_result(
             name="a",
             precision=0.25,
             recall=0.25,
             ndcg=0.25,
             map_val=0.25,
         )
-        r2 = _make_result(
+        r2 = make_result(
             name="b",
             precision=0.5,
             recall=0.5,

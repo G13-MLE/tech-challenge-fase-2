@@ -116,10 +116,10 @@ class TorchEmbeddingRecommender(RecommenderModel):
         materialized = list(interactions)
         if not materialized:
             return
-        if self._needs_string_mapping(materialized):
-            self._fit_with_string_ids(materialized)
+        if self.needs_string_mapping(materialized):
+            self.fit_with_string_ids(materialized)
         else:
-            self._fit_with_integer_ids(materialized)
+            self.fit_with_integer_ids(materialized)
 
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
         """Retorna os itens de maior pontuacao ainda nao consumidos.
@@ -131,9 +131,9 @@ class TorchEmbeddingRecommender(RecommenderModel):
         Returns:
             Identificadores dos itens recomendados, ordenados por relevancia.
         """
-        user_idx = self._resolve_user_idx(user_id)
+        user_idx = self.resolve_user_idx(user_id)
         if user_idx is None:
-            return self._recommend_cold_start(limit)
+            return self.recommend_cold_start(limit)
         self.network.eval()
         recommendation_limit = resolve_limit(self._default_limit, limit)
         with torch.no_grad():
@@ -153,12 +153,12 @@ class TorchEmbeddingRecommender(RecommenderModel):
         for position, item in enumerate(top_items.tolist()):
             if torch.isinf(top_scores[position]):
                 continue
-            recommendations.append(self._format_item_id(int(item)))
+            recommendations.append(self.format_item_id(int(item)))
         return recommendations
 
     # --- Treino com BPR ---
 
-    def _needs_string_mapping(self, interactions: list[Interaction]) -> bool:
+    def needs_string_mapping(self, interactions: list[Interaction]) -> bool:
         """Detecta se os IDs precisam mapeamento str->int."""
         if not interactions:
             return False
@@ -170,22 +170,22 @@ class TorchEmbeddingRecommender(RecommenderModel):
         except ValueError:
             return True
 
-    def _fit_with_string_ids(self, interactions: list[Interaction]) -> None:
+    def fit_with_string_ids(self, interactions: list[Interaction]) -> None:
         """Mapeia str->int, reconstrui rede e treina inline com BPR."""
-        self._build_string_mappings(interactions)
-        numeric_interactions = self._to_numeric_interactions(interactions)
-        self._rebuild_model_for_string_ids()
-        self._train_inline(numeric_interactions)
-        self._register_history(numeric_interactions)
+        self.build_string_mappings(interactions)
+        numeric_interactions = self.to_numeric_interactions(interactions)
+        self.rebuild_model_for_string_ids()
+        self.train_inline(numeric_interactions)
+        self.register_history(numeric_interactions)
         self._was_trained_inline = True
 
-    def _fit_with_integer_ids(self, interactions: list[Interaction]) -> None:
+    def fit_with_integer_ids(self, interactions: list[Interaction]) -> None:
         """Registra historico assumindo IDs ja codificados como inteiros."""
         for user_str, item_str in interactions:
             user_idx, item_idx = int(user_str), int(item_str)
             self._user_history.setdefault(user_idx, set()).add(item_idx)
 
-    def _build_string_mappings(self, interactions: list[Interaction]) -> None:
+    def build_string_mappings(self, interactions: list[Interaction]) -> None:
         """Constroi mapeamentos bidirecionais str<->int."""
         user_ids = {uid for uid, _ in interactions}
         item_ids = {iid for _, iid in interactions}
@@ -194,7 +194,7 @@ class TorchEmbeddingRecommender(RecommenderModel):
         self._item_to_idx = {iid: idx for idx, iid in enumerate(sorted(item_ids))}
         self._idx_to_item = {idx: iid for iid, idx in self._item_to_idx.items()}
 
-    def _to_numeric_interactions(
+    def to_numeric_interactions(
         self, interactions: list[Interaction]
     ) -> list[tuple[int, int]]:
         """Converte interacoes string para pares (user_idx, item_idx)."""
@@ -206,14 +206,14 @@ class TorchEmbeddingRecommender(RecommenderModel):
                 numeric.append((user_idx, item_idx))
         return numeric
 
-    def _rebuild_model_for_string_ids(self) -> None:
+    def rebuild_model_for_string_ids(self) -> None:
         """Reconstroi a rede com dimensoes derivadas do mapeamento."""
         num_users = len(self._user_to_idx)
         num_items = len(self._item_to_idx)
         embedding_dim = self.network.user_embeddings.embedding_dim
         self.network = EmbeddingScoringModel(num_users, num_items, embedding_dim)
 
-    def _train_inline(self, numeric_interactions: list[tuple[int, int]]) -> None:
+    def train_inline(self, numeric_interactions: list[tuple[int, int]]) -> None:
         """Treina embeddings com BPR loss e negativos amostrados por usuario."""
         cfg = self._training_config
         torch.manual_seed(cfg.random_seed)
@@ -233,13 +233,13 @@ class TorchEmbeddingRecommender(RecommenderModel):
 
         for _epoch in range(cfg.epochs):
             # Gera tripletos BPR: (usuario, item_positivo, item_negativo)
-            triplets = self._sample_bpr_triplets(
+            triplets = self.sample_bpr_triplets(
                 numeric_interactions, user_positives, n_items, cfg, gen
             )
-            self._run_bpr_epoch(optimizer, triplets, cfg.batch_size)
+            self.run_bpr_epoch(optimizer, triplets, cfg.batch_size)
             scheduler.step()
 
-    def _sample_bpr_triplets(
+    def sample_bpr_triplets(
         self,
         positives: list[tuple[int, int]],
         user_positives: dict[int, set[int]],
@@ -265,7 +265,7 @@ class TorchEmbeddingRecommender(RecommenderModel):
                 triplets.append((user_idx, pos_item, neg_item))
         return triplets
 
-    def _run_bpr_epoch(
+    def run_bpr_epoch(
         self,
         optimizer: torch.optim.Optimizer,
         triplets: list[tuple[int, int, int]],
@@ -290,7 +290,7 @@ class TorchEmbeddingRecommender(RecommenderModel):
 
     # --- Predicao ---
 
-    def _resolve_user_idx(self, user_id: str) -> int | None:
+    def resolve_user_idx(self, user_id: str) -> int | None:
         """Converte user_id para indice interno, ou None se desconhecido."""
         if self._was_trained_inline:
             return self._user_to_idx.get(user_id)
@@ -299,18 +299,18 @@ class TorchEmbeddingRecommender(RecommenderModel):
         except ValueError:
             return None
 
-    def _format_item_id(self, item_idx: int) -> str:
+    def format_item_id(self, item_idx: int) -> str:
         """Converte indice interno do item de volta para string."""
         if self._was_trained_inline:
             return self._idx_to_item.get(item_idx, str(item_idx))
         return str(item_idx)
 
-    def _recommend_cold_start(self, limit: int | None) -> list[str]:
+    def recommend_cold_start(self, limit: int | None) -> list[str]:
         """Recomendacao para usuario desconhecido: retorna lista vazia."""
         _ = limit
         return []
 
-    def _register_history(self, numeric_interactions: list[tuple[int, int]]) -> None:
+    def register_history(self, numeric_interactions: list[tuple[int, int]]) -> None:
         """Registra itens ja consumidos por usuario (indices internos)."""
         for user_idx, item_idx in numeric_interactions:
             self._user_history.setdefault(user_idx, set()).add(item_idx)
