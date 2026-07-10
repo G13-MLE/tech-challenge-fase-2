@@ -42,9 +42,7 @@ from techchallenge_fase2.pipelines.report import (
     save_markdown_report,
 )
 from techchallenge_fase2.pipelines.splits import (
-    chronological_holdout_split,
     chronological_train_val_test_split,
-    filter_warm_start,
     filter_warm_start_three_way,
 )
 from techchallenge_fase2.training.metrics import compute_recommender_metrics
@@ -292,14 +290,13 @@ def temporal_holdout_split(
     """
     _ = random_seed
     if timestamp_col not in interactions_df.columns:
-        split = chronological_holdout_split(interactions_df, test_ratio, timestamp_col)
-        split = filter_warm_start(split)
-        all_items_by_user = group_items_by_user(interactions_df)
-        return (
-            split.train_interactions,
-            split.ground_truth,
-            all_items_by_user,
+        msg = (
+            f"Coluna de timestamp '{timestamp_col}' ausente; o split "
+            "cronologico requer uma coluna de timestamp. Fornea uma "
+            "coluna de timestamp no DataFrame ou use uma estrategia de "
+            "divisao nao cronologica."
         )
+        raise ValueError(msg)
     val_ratio = test_ratio
     split = chronological_train_val_test_split(
         interactions_df, val_ratio=val_ratio, test_ratio=test_ratio

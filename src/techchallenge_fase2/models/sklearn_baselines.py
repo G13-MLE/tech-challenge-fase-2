@@ -304,13 +304,27 @@ class LogisticRegressionRecommender(RecommenderModel):
         return np.array(list(zip(rows, cols, strict=False)), dtype=np.int64)
 
     def sample_negatives(self, n_positives: int) -> np.ndarray:
-        """Amostra negativos (user, item nao consumido) por positivo."""
+        """Amostra negativos (user, item nao consumido) por positivo.
+
+        Rejeita candidatos que sao positivos do usuario para evitar ruido
+        de label, seguindo o mesmo padrao dos samplers NCF e BPR.
+        """
         if n_positives == 0 or self._n_users == 0 or self._n_items == 0:
             return np.empty((0, 2), dtype=np.int64)
-        n_negatives = n_positives * self._config.negatives_per_positive
-        user_ids = self._rng.choice(self._n_users, size=n_negatives, replace=True)
-        item_ids = self._rng.choice(self._n_items, size=n_negatives, replace=True)
-        return np.array(list(zip(user_ids, item_ids, strict=False)), dtype=np.int64)
+        negatives: list[tuple[int, int]] = []
+        n_target = n_positives * self._config.negatives_per_positive
+        max_attempts = n_target * 10
+        attempts = 0
+        while len(negatives) < n_target and attempts < max_attempts:
+            user_idx = int(self._rng.integers(0, self._n_users))
+            item_idx = int(self._rng.integers(0, self._n_items))
+            attempts += 1
+            if item_idx in self._seen_items.get(user_idx, set()):
+                continue
+            negatives.append((user_idx, item_idx))
+        if not negatives:
+            return np.empty((0, 2), dtype=np.int64)
+        return np.array(negatives, dtype=np.int64)
 
     def build_onehot_features(self, pairs: np.ndarray) -> sp.csr_matrix:
         """Constroi features esparsas concatenando one-hot de user e item.

@@ -47,11 +47,28 @@ def test_settings_defaults(clear_env: None) -> None:
     assert settings.configs_dir == Path("configs")
     assert settings.mlflow_tracking_uri == "http://localhost:5000"
     assert settings.mlflow_experiment_name == "tech-challenge-fase2"
+    assert settings.mlflow_ncf_experiment_name == "tech-challenge-ncf"
+    assert settings.mlflow_ease_experiment_name == "tech-challenge-ease"
+    assert settings.mlflow_baseline_experiment_name == "tech-challenge-baselines"
+    assert settings.mlflow_comparison_experiment_name == "tech-challenge-comparison"
     assert settings.dvc_remote_url == ""
     assert settings.learning_rate == 0.001
     assert settings.batch_size == 64
     assert settings.epochs == 10
     assert settings.embedding_dim == 64
+
+
+def test_env_example_declares_mlflow_comparison_experiment_name() -> None:
+    """O .env.example deve documentar MLFLOW_COMPARISON_EXPERIMENT_NAME.
+
+    As tres variaveis irmao (NCF, EASE, BASELINE) ja sao declaradas; a
+    de comparacao estava faltando, impedindo configuracao via .env.
+    """
+    env_example = Path(__file__).resolve().parent.parent / ".env.example"
+    content = env_example.read_text(encoding="utf-8")
+    assert "MLFLOW_COMPARISON_EXPERIMENT_NAME" in content, (
+        ".env.example deve declarar MLFLOW_COMPARISON_EXPERIMENT_NAME"
+    )
 
 
 def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:

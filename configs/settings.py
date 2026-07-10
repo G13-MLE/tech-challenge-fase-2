@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     mlflow_ncf_experiment_name: str = "tech-challenge-ncf"
     mlflow_ease_experiment_name: str = "tech-challenge-ease"
     mlflow_baseline_experiment_name: str = "tech-challenge-baselines"
+    mlflow_comparison_experiment_name: str = "tech-challenge-comparison"
 
     dvc_remote_url: str = ""
 
