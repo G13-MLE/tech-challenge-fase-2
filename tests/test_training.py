@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from techchallenge_fase2.pipeline.training import (
+from techchallenge_fase2.pipelines.training import (
     build_negative_rows,
     sample_negative_item,
 )

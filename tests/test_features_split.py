@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from techchallenge_fase2.pipeline.features import split_frame
+from techchallenge_fase2.pipelines.features import split_frame
 
 
 def _frame(n_rows: int) -> pd.DataFrame:

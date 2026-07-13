@@ -10,10 +10,15 @@ from techchallenge_fase2.models.baselines import (
     RecentItemsRecommender,
 )
 from techchallenge_fase2.models.config import ModelConfig, ModelType
+from techchallenge_fase2.models.ease_torch import EASETorchRecommender
 from techchallenge_fase2.models.embedding import TorchEmbeddingRecommender
 from techchallenge_fase2.models.ncf import (
     NeuralCollaborativeFiltering,
     NeuralRecommender,
+)
+from techchallenge_fase2.models.sklearn_baselines import (
+    ItemKNNRecommender,
+    LogisticRegressionRecommender,
 )
 
 ModelKey = ModelType | str
@@ -40,24 +45,40 @@ def create_recent_items_model(config: ModelConfig) -> RecommenderModel:
 
 
 def create_torch_embedding_model(config: ModelConfig) -> RecommenderModel:
-    """Cria o recomendador neural baseado em embeddings."""
+    """Cria o recomendador neural baseado em embeddings com treino BPR."""
     return TorchEmbeddingRecommender(
         num_users=config.num_users,
         num_items=config.num_items,
         embedding_dim=config.embedding_dim,
         default_limit=config.recommendation_limit,
+        training_config=config.embedding_training_config(),
     )
 
 
 def create_neural_ncf_model(config: ModelConfig) -> RecommenderModel:
     """Cria o recomendador neural (NCF: GMF + MLP) a partir da config."""
     ncf = NeuralCollaborativeFiltering(config.neural_config())
-    return NeuralRecommender(ncf)
+    return NeuralRecommender(ncf, config.ncf_training_config())
 
 
 def create_random_model(config: ModelConfig) -> RecommenderModel:
     """Cria o recomendador aleatório (lower bound)."""
     return RandomRecommender(default_limit=config.recommendation_limit)
+
+
+def create_ease_torch_model(config: ModelConfig) -> RecommenderModel:
+    """Cria o recomendador EASE^ (candidato a campeao) a partir da config."""
+    return EASETorchRecommender(config.ease_config())
+
+
+def create_item_knn_model(config: ModelConfig) -> RecommenderModel:
+    """Cria o recomendador baseado em vizinhos mais proximos de itens."""
+    return ItemKNNRecommender(default_limit=config.recommendation_limit)
+
+
+def create_logistic_regression_model(config: ModelConfig) -> RecommenderModel:
+    """Cria o recomendador baseado em regressao logistica binaria."""
+    return LogisticRegressionRecommender(default_limit=config.recommendation_limit)
 
 
 class RecommenderModelFactory:
@@ -76,6 +97,11 @@ class RecommenderModelFactory:
         factory.register(ModelType.TORCH_EMBEDDING, create_torch_embedding_model)
         factory.register(ModelType.RANDOM, create_random_model)
         factory.register(ModelType.NEURAL_NCF, create_neural_ncf_model)
+        factory.register(ModelType.EASE_TORCH, create_ease_torch_model)
+        factory.register(ModelType.ITEM_KNN, create_item_knn_model)
+        factory.register(
+            ModelType.LOGISTIC_REGRESSION, create_logistic_regression_model
+        )
         return factory
 
     def register(self, model_type: ModelKey, creator: ModelCreator) -> None:

@@ -35,6 +35,9 @@ models/*
 !models/.gitignore
 !models/checkpoints/.gitignore
 
+# Relatorios e graficos gerados pela pipeline
+reports/
+
 # MLflow
 mlruns/
 mlartifacts/
@@ -68,3 +71,6 @@ Tech Challenge Fase 02.pdf
 
 # AI tooling
 .ai-jail
+
+# Playwright
+.playwright-mcp

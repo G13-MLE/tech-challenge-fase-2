@@ -1,12 +1,20 @@
-"""Evaluate the trained embedding recommender."""
+"""Evaluate the trained embedding recommender.
+
+Avalia o NCF treinado pelo estagio ``train`` e persiste as metricas Top-K
+em ``metrics/recommendation_metrics.json``. Tambem registra hiperparametros,
+metricas, artefatos e o Model Card no MLflow, reaproveitando os utilitarios
+de ``techchallenge_fase2.training.mlflow_tracking``.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
+import mlflow
 import numpy as np
 import pandas as pd
 import torch
@@ -15,14 +23,33 @@ from techchallenge_fase2.models.ncf import (
     NCFConfig,
     NeuralCollaborativeFiltering,
 )
-from techchallenge_fase2.pipeline.config import PipelineParams, load_params
-from techchallenge_fase2.pipeline.metrics import (
+from techchallenge_fase2.pipelines.common import (
+    get_experiment_name,
+    load_dotenv_silent,
+    safe_get_dataset_version,
+)
+from techchallenge_fase2.pipelines.config import PipelineParams, load_params
+from techchallenge_fase2.pipelines.metrics import (
     hit_rate_at_k,
     map_at_k,
     ndcg_at_k,
     precision_at_k,
     recall_at_k,
 )
+from techchallenge_fase2.training.mlflow_tracking import (
+    MLflowConfig,
+    log_artifacts,
+    log_hyperparameters,
+    log_metrics,
+    log_system_info,
+    setup_mlflow,
+)
+from techchallenge_fase2.training.model_card import build_model_card
+
+logger = logging.getLogger(__name__)
+
+# Nome do experimento MLflow para a avaliacao do NCF orquestrada pelo DVC.
+DEFAULT_EXPERIMENT_NAME = "tech-challenge-fase2-ncf"
 
 
 def parse_args() -> argparse.Namespace:
@@ -35,7 +62,7 @@ def parse_args() -> argparse.Namespace:
 def load_checkpoint(path: Path) -> dict[str, Any]:
     """Load a PyTorch checkpoint safely.
 
-    Usa ``weights_only=True`` para impedir execução arbitrária de pickle ao
+    Usa ``weights_only=True`` para impedir execucao arbitrária de pickle ao
     desserializar checkpoints compartilhados pelo DVC remote.
     """
     return torch.load(path, map_location="cpu", weights_only=True)
@@ -215,8 +242,93 @@ def save_metrics(metrics: dict[str, float], path: Path) -> None:
     path.write_text(json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def build_evaluation_hyperparameters(
+    params: PipelineParams,
+    checkpoint: dict[str, Any],
+    num_evaluated_users: int,
+    dataset_version: str,
+) -> dict[str, Any]:
+    """Constroi o dict de hiperparametros de avaliacao para o MLflow."""
+    return {
+        "model_type": "neural_ncf",
+        "architecture": "NeuralCollaborativeFiltering",
+        "embedding_dim": int(checkpoint["embedding_dim"]),
+        "top_k": params.evaluation.top_k,
+        "max_users": params.evaluation.max_users,
+        "num_users": int(checkpoint["num_users"]),
+        "num_items": int(checkpoint["num_items"]),
+        "num_evaluated_users": num_evaluated_users,
+        "dataset_version": dataset_version,
+        "best_train_metric": float(checkpoint.get("best_metric", 0.0)),
+        "final_train_loss": float(checkpoint.get("final_loss", 0.0)),
+    }
+
+
+def log_evaluation_run(
+    params: PipelineParams,
+    checkpoint: dict[str, Any],
+    metrics: dict[str, float],
+    dataset_version: str,
+) -> None:
+    """Registra hiperparametros, metricas e artefatos de avaliacao no MLflow."""
+    num_evaluated_users = int(metrics.get("evaluated_users", 0.0))
+    log_hyperparameters(
+        build_evaluation_hyperparameters(
+            params, checkpoint, num_evaluated_users, dataset_version
+        )
+    )
+    log_system_info(random_seed=params.training.random_seed)
+    log_metrics(metrics)
+
+    # Tags distinguindo o run de avaliacao do NCF orquestrado pelo DVC.
+    mlflow.set_tag("model_type", "neural_ncf")
+    mlflow.set_tag("model_name", "ncf")
+    mlflow.set_tag("stage", "evaluate")
+    mlflow.set_tag("orchestrator", "dvc")
+    mlflow.set_tag("dataset_version", dataset_version)
+
+    # Loga o arquivo de metricas como artefato do MLflow.
+    if params.paths.metrics.exists():
+        log_artifacts([params.paths.metrics])
+
+    # Model Card do NCF com as metricas de avaliacao preenchidas.
+    card = build_model_card(
+        "neural_ncf",
+        random_seed=params.training.random_seed,
+        dataset_version=dataset_version,
+        num_users=int(checkpoint["num_users"]),
+        num_items=int(checkpoint["num_items"]),
+        num_evaluated_users=num_evaluated_users,
+        **card_metrics(metrics, params.evaluation.top_k),
+    )
+    mlflow.log_dict(card, "model_card.json")
+
+
+def card_metrics(metrics: dict[str, float], top_k: int) -> dict[str, float]:
+    """Mapeia metricas agregadas para as chaves esperadas pelo Model Card."""
+    return {
+        f"hit_rate@{top_k}": metrics.get(f"hit_rate_at_{top_k}", 0.0),
+        f"map@{top_k}": metrics.get(f"map_at_{top_k}", 0.0),
+        f"ndcg@{top_k}": metrics.get(f"ndcg_at_{top_k}", 0.0),
+        f"precision@{top_k}": metrics.get(f"precision_at_{top_k}", 0.0),
+        f"recall@{top_k}": metrics.get(f"recall_at_{top_k}", 0.0),
+    }
+
+
 def run(params: PipelineParams) -> None:
-    """Run the evaluation stage."""
+    """Run the evaluation stage with MLflow tracking."""
+    load_dotenv_silent()
+
+    # Configura MLflow (tracking URI + experimento) e abre um run dedicado.
+    ncf_exp_name = get_experiment_name(
+        cli_arg=None,
+        env_var_name="MLFLOW_NCF_EXPERIMENT_NAME",
+        default_name=DEFAULT_EXPERIMENT_NAME,
+    )
+    mlflow_config = MLflowConfig(experiment_name=ncf_exp_name)
+    setup_mlflow(mlflow_config)
+    dataset_version = safe_get_dataset_version()
+
     checkpoint = load_checkpoint(params.paths.model_checkpoint)
     model = load_model(checkpoint)
     train = load_features(params.paths.train_features)
@@ -224,9 +336,22 @@ def run(params: PipelineParams) -> None:
     metrics = evaluate_users(model, train, test, params)
     save_metrics(metrics, params.paths.metrics)
 
+    with mlflow.start_run(run_name="ncf_evaluate"):
+        log_evaluation_run(params, checkpoint, metrics, dataset_version)
+
+    logger.info(
+        "Avaliacao concluida: evaluated_users=%d top_k=%d",
+        int(metrics.get("evaluated_users", 0.0)),
+        params.evaluation.top_k,
+    )
+
 
 def main() -> None:
     """CLI entry point for the evaluation stage."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     args = parse_args()
     run(load_params(args.params))
 

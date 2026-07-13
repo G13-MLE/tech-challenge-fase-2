@@ -1,10 +1,10 @@
 stages:
   preprocess:
-    cmd: uv run python -m techchallenge_fase2.pipeline.preprocess
+    cmd: uv run python -m techchallenge_fase2.pipelines.preprocess
     deps:
       - data/raw/events.csv
-      - src/techchallenge_fase2/pipeline/config.py
-      - src/techchallenge_fase2/pipeline/preprocess.py
+      - src/techchallenge_fase2/pipelines/config.py
+      - src/techchallenge_fase2/pipelines/preprocess.py
     params:
       - paths.raw_events
       - paths.processed_interactions
@@ -15,11 +15,11 @@ stages:
       - data/processed/interactions.parquet
 
   feature_eng:
-    cmd: uv run python -m techchallenge_fase2.pipeline.features
+    cmd: uv run python -m techchallenge_fase2.pipelines.features
     deps:
       - data/processed/interactions.parquet
-      - src/techchallenge_fase2/pipeline/config.py
-      - src/techchallenge_fase2/pipeline/features.py
+      - src/techchallenge_fase2/pipelines/config.py
+      - src/techchallenge_fase2/pipelines/features.py
     params:
       - paths.train_features
       - paths.validation_features
@@ -37,7 +37,7 @@ stages:
       - data/features/dataset_stats.json
 
   train:
-    cmd: uv run python -m techchallenge_fase2.pipeline.training
+    cmd: uv run python -m techchallenge_fase2.pipelines.training
     deps:
       - data/features/train.parquet
       - data/features/validation.parquet
@@ -46,8 +46,8 @@ stages:
       - src/techchallenge_fase2/models/config.py
       - src/techchallenge_fase2/models/ncf.py
       - src/techchallenge_fase2/models/factory.py
-      - src/techchallenge_fase2/pipeline/config.py
-      - src/techchallenge_fase2/pipeline/training.py
+      - src/techchallenge_fase2/pipelines/config.py
+      - src/techchallenge_fase2/pipelines/training.py
       - src/techchallenge_fase2/training/__init__.py
       - src/techchallenge_fase2/training/early_stopping.py
       - src/techchallenge_fase2/training/checkpoint.py
@@ -69,15 +69,15 @@ stages:
       - models/checkpoints/
 
   evaluate:
-    cmd: uv run python -m techchallenge_fase2.pipeline.evaluation
+    cmd: uv run python -m techchallenge_fase2.pipelines.evaluation
     deps:
       - data/features/train.parquet
       - data/features/test.parquet
       - models/torch_embedding_recommender.pt
       - src/techchallenge_fase2/models/ncf.py
-      - src/techchallenge_fase2/pipeline/config.py
-      - src/techchallenge_fase2/pipeline/evaluation.py
-      - src/techchallenge_fase2/pipeline/metrics.py
+      - src/techchallenge_fase2/pipelines/config.py
+      - src/techchallenge_fase2/pipelines/evaluation.py
+      - src/techchallenge_fase2/pipelines/metrics.py
     params:
       - paths.metrics
       - evaluation.top_k

@@ -1,7 +1,7 @@
 """Unit tests for recommendation metrics."""
 
-from techchallenge_fase2.pipeline.evaluation import filter_evaluable_relevance
-from techchallenge_fase2.pipeline.metrics import (
+from techchallenge_fase2.pipelines.evaluation import filter_evaluable_relevance
+from techchallenge_fase2.pipelines.metrics import (
     hit_rate_at_k,
     map_at_k,
     ndcg_at_k,

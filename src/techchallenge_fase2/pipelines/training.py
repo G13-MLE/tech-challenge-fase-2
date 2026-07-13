@@ -4,16 +4,21 @@ Orquestra a leitura das features de treino/validacao, a amostragem negativa,
 a instanciacao do NCF via Factory e o loop de treinamento delegando ao
 ``Trainer`` do modulo ``techchallenge_fase2.training``, que aplica early
 stopping, valida por AUC a cada epoca e persiste checkpoints best/last.
+Tambem registra hiperparametros, metricas, artefatos e o modelo no MLflow,
+reaproveitando os utilitarios de ``techchallenge_fase2.training.mlflow_tracking``.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import random
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+import mlflow
 import numpy as np
 import pandas as pd
 import torch
@@ -21,11 +26,36 @@ import torch
 from techchallenge_fase2.data import InteractionData
 from techchallenge_fase2.models.config import ModelConfig
 from techchallenge_fase2.models.ncf import NeuralCollaborativeFiltering
-from techchallenge_fase2.pipeline.config import PipelineParams, load_params
-from techchallenge_fase2.training import Trainer, TrainingConfig
+from techchallenge_fase2.pipelines.common import (
+    get_experiment_name,
+    load_dotenv_silent,
+    safe_get_dataset_version,
+)
+from techchallenge_fase2.pipelines.config import PipelineParams, load_params
+from techchallenge_fase2.training import (
+    Trainer,
+    TrainingConfig,
+    TrainingHistory,
+)
+from techchallenge_fase2.training.mlflow_tracking import (
+    MLflowConfig,
+    log_artifacts,
+    log_hyperparameters,
+    log_input_data_summary,
+    log_metrics,
+    log_recommender_model,
+    log_system_info,
+    setup_mlflow,
+)
+from techchallenge_fase2.training.model_card import build_model_card
+
+logger = logging.getLogger(__name__)
 
 LabelRow = tuple[int, int, float]
 PositiveRow = tuple[int, int]
+
+# Nome do experimento MLflow para o treino do NCF orquestrado pelo DVC.
+DEFAULT_EXPERIMENT_NAME = "tech-challenge-fase2-ncf"
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,9 +259,153 @@ def save_pipeline_checkpoint(
     )
 
 
+def build_training_hyperparameters(
+    params: PipelineParams, users: int, items: int, dataset_version: str
+) -> dict[str, Any]:
+    """Constroi o dict de hiperparametros para logar no MLflow."""
+    train_df = load_features(params.paths.train_features)
+    val_df = load_features(params.paths.validation_features)
+    return {
+        "model_type": "neural_ncf",
+        "architecture": "NeuralCollaborativeFiltering",
+        "num_users": users,
+        "num_items": items,
+        "embedding_dim": params.training.embedding_dim,
+        "batch_size": params.training.batch_size,
+        "epochs": params.training.epochs,
+        "learning_rate": params.training.learning_rate,
+        "negative_samples": params.training.negative_samples,
+        "patience": params.training.patience,
+        "min_delta": params.training.min_delta,
+        "random_seed": params.training.random_seed,
+        "top_k": params.evaluation.top_k,
+        "num_train_interactions": int(len(train_df)),
+        "num_validation_interactions": int(len(val_df)),
+        "dataset_version": dataset_version,
+    }
+
+
+def build_input_summary(
+    params: PipelineParams, users: int, items: int, dataset_version: str
+) -> dict[str, Any]:
+    """Constroi resumo dos dados de entrada para artefato MLflow."""
+    train_df = load_features(params.paths.train_features)
+    val_df = load_features(params.paths.validation_features)
+    num_train = int(len(train_df))
+    num_val = int(len(val_df))
+    sparsity = 1.0 - (num_train / (users * items)) if users and items else 1.0
+    return {
+        "dataset": "RetailRocket E-Commerce",
+        "dataset_version": dataset_version,
+        "split_strategy": "temporal_holdout",
+        "num_users": users,
+        "num_items": items,
+        "num_train_interactions": num_train,
+        "num_validation_interactions": num_val,
+        "sparsity": float(sparsity),
+        "features_train_path": str(params.paths.train_features),
+        "features_validation_path": str(params.paths.validation_features),
+    }
+
+
+def summarize_history(history: TrainingHistory) -> dict[str, float]:
+    """Extrai metricas finais agregadas do historico de treino."""
+    train_losses = history.train_losses
+    val_metrics = history.val_metrics
+    return {
+        "final_train_loss": float(train_losses[-1]) if train_losses else 0.0,
+        "best_val_auc": float(max(val_metrics)) if val_metrics else 0.0,
+        "last_val_auc": float(val_metrics[-1]) if val_metrics else 0.0,
+        "num_epochs_run": float(len(train_losses)),
+        "stopped_epoch": float(history.stopped_epoch),
+    }
+
+
+def save_history_artifact(history: TrainingHistory, artifact_path: Path) -> Path:
+    """Salva o historico de treino/validacao como JSON para artefato MLflow."""
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "train_losses": list(history.train_losses),
+        "val_auc": list(history.val_metrics),
+        "stopped_epoch": history.stopped_epoch,
+    }
+    artifact_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    return artifact_path
+
+
+def log_training_run(
+    model: NeuralCollaborativeFiltering,
+    params: PipelineParams,
+    history: TrainingHistory,
+    users: int,
+    items: int,
+    dataset_version: str,
+) -> None:
+    """Registra hiperparametros, metricas, modelo e artefatos no MLflow.
+
+    Reutiliza os utilitarios genericos de ``mlflow_tracking`` para manter
+    consistencia com a pipeline de baselines.
+    """
+    log_hyperparameters(
+        build_training_hyperparameters(params, users, items, dataset_version)
+    )
+    log_system_info(random_seed=params.training.random_seed)
+    log_input_data_summary(build_input_summary(params, users, items, dataset_version))
+    log_metrics(summarize_history(history))
+
+    # Tags para distinguir o run do NCF orquestrado pelo DVC.
+    mlflow.set_tag("model_type", "neural_ncf")
+    mlflow.set_tag("model_name", "ncf")
+    mlflow.set_tag("stage", "train")
+    mlflow.set_tag("orchestrator", "dvc")
+    mlflow.set_tag("random_seed", str(params.training.random_seed))
+    mlflow.set_tag("dataset_version", dataset_version)
+
+    # Log do modelo PyTorch como artefato do MLflow.
+    log_recommender_model(model, "neural_ncf", artifact_path="model")
+
+    # Salva e loga o historico de treino como artefato JSON.
+    history_path = save_history_artifact(
+        history, Path("models") / "training_history.json"
+    )
+    log_artifacts([history_path])
+
+    # Loga o checkpoint final do pipeline como artefato.
+    if params.paths.model_checkpoint.exists():
+        log_artifacts([params.paths.model_checkpoint])
+
+    # Model Card do NCF (reaproveita o builder generico de model_card.py).
+    card = build_model_card(
+        "neural_ncf",
+        random_seed=params.training.random_seed,
+        dataset_version=dataset_version,
+        num_users=users,
+        num_items=items,
+        final_train_loss=float(
+            history.train_losses[-1] if history.train_losses else 0.0
+        ),
+        best_val_auc=float(max(history.val_metrics) if history.val_metrics else 0.0),
+    )
+    mlflow.log_dict(card, "model_card.json")
+
+
 def run(params: PipelineParams) -> None:
-    """Run the training stage."""
+    """Run the training stage with MLflow tracking."""
+    load_dotenv_silent()
     set_seed(params.training.random_seed)
+
+    # Configura MLflow (tracking URI + experimento) e abre um run dedicado.
+    ncf_exp_name = get_experiment_name(
+        cli_arg=None,
+        env_var_name="MLFLOW_NCF_EXPERIMENT_NAME",
+        default_name=DEFAULT_EXPERIMENT_NAME,
+    )
+    mlflow_config = MLflowConfig(experiment_name=ncf_exp_name)
+    setup_mlflow(mlflow_config)
+    dataset_version = safe_get_dataset_version()
+
     train_frame = load_features(params.paths.train_features)
     val_frame = load_features(params.paths.validation_features)
     users, items = load_entity_counts(params.paths.mappings)
@@ -240,12 +414,27 @@ def run(params: PipelineParams) -> None:
     val_tensors = build_labeled_tensors(val_frame, params, items)
     data = to_interaction_data(train_tensors, val_tensors, users, items)
     trainer = Trainer(build_training_config(params), params.paths.checkpoint_dir)
-    history = trainer.train(model, data)
-    save_pipeline_checkpoint(model, params, (history.train_losses, history.val_metrics))
+
+    with mlflow.start_run(run_name="ncf_train"):
+        history = trainer.train(model, data)
+        save_pipeline_checkpoint(
+            model, params, (history.train_losses, history.val_metrics)
+        )
+        log_training_run(model, params, history, users, items, dataset_version)
+
+    logger.info(
+        "Treino concluido: best_val_auc=%.4f epochs_run=%d",
+        max(history.val_metrics) if history.val_metrics else 0.0,
+        len(history.train_losses),
+    )
 
 
 def main() -> None:
     """CLI entry point for the training stage."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     args = parse_args()
     run(load_params(args.params))
 

@@ -1,20 +1,20 @@
 schema: '2.0'
 stages:
   preprocess:
-    cmd: uv run python -m techchallenge_fase2.pipeline.preprocess
+    cmd: uv run python -m techchallenge_fase2.pipelines.preprocess
     deps:
     - path: data/raw/events.csv
       hash: md5
-      md5: fddaf7c1c6a9df23a726500a08ffdd7e
-      size: 94237913
-    - path: src/techchallenge_fase2/pipeline/config.py
+      md5: 7a5f2fe16a57c0ce694036f0bb526664
+      size: 27374
+    - path: src/techchallenge_fase2/pipelines/config.py
       hash: md5
       md5: b8d993bca8a448b5524eddfb4a719dd2
       size: 4202
-    - path: src/techchallenge_fase2/pipeline/preprocess.py
+    - path: src/techchallenge_fase2/pipelines/preprocess.py
       hash: md5
-      md5: ba3d4bfdc08e5a83133c4965ba9732e6
-      size: 2930
+      md5: 2ac8bdd6b30ceff7f327b6f356ff3dfa
+      size: 2931
     params:
       params.yaml:
         features.event_weights:
@@ -28,23 +28,23 @@ stages:
     outs:
     - path: data/processed/interactions.parquet
       hash: md5
-      md5: c839daafcc81f3951fac45ad8e918dc2
-      size: 1559709
+      md5: 8930baa1a901f6b280b63d879c1fa484
+      size: 20090
   feature_eng:
-    cmd: uv run python -m techchallenge_fase2.pipeline.features
+    cmd: uv run python -m techchallenge_fase2.pipelines.features
     deps:
     - path: data/processed/interactions.parquet
       hash: md5
-      md5: c839daafcc81f3951fac45ad8e918dc2
-      size: 1559709
-    - path: src/techchallenge_fase2/pipeline/config.py
+      md5: 8930baa1a901f6b280b63d879c1fa484
+      size: 20090
+    - path: src/techchallenge_fase2/pipelines/config.py
       hash: md5
       md5: b8d993bca8a448b5524eddfb4a719dd2
       size: 4202
-    - path: src/techchallenge_fase2/pipeline/features.py
+    - path: src/techchallenge_fase2/pipelines/features.py
       hash: md5
-      md5: a8accb30e19702c9917ee7e57d8493b4
-      size: 5859
+      md5: ee7b491820672167ec8b0def800ded69
+      size: 5860
     params:
       params.yaml:
         features.session_gap_minutes: 30
@@ -58,63 +58,63 @@ stages:
     outs:
     - path: data/features/dataset_stats.json
       hash: md5
-      md5: 89a29f2ef843291cbd459206d2a058af
-      size: 109
+      md5: 04bfca217e62f067696a44a1d967e6e2
+      size: 99
     - path: data/features/mappings.json
       hash: md5
-      md5: 91b4736ef85187c5e44b14ac61eb6910
-      size: 1075380
+      md5: 25ef49bc23ec54acdd2e389174f9bfbd
+      size: 1222
     - path: data/features/test.parquet
       hash: md5
-      md5: 8a72dd6a94860d58a745140379e4f0bb
-      size: 387770
+      md5: 44079b1630d63f4778225d186ed99222
+      size: 9810
     - path: data/features/train.parquet
       hash: md5
-      md5: 1d7e0527d91cde572c453ccfcda13e79
-      size: 1771694
+      md5: 750532576dcb0835a10a2d0f1a0a1fef
+      size: 19800
     - path: data/features/validation.parquet
       hash: md5
-      md5: ee16b68a7bd6cd956d7d78da849ef8ba
-      size: 388057
+      md5: 2792c6a05cf483eff0e145bf06cd774f
+      size: 9831
   train:
-    cmd: uv run python -m techchallenge_fase2.pipeline.training
+    cmd: uv run python -m techchallenge_fase2.pipelines.training
     deps:
     - path: data/features/mappings.json
       hash: md5
-      md5: 91b4736ef85187c5e44b14ac61eb6910
-      size: 1075380
+      md5: 25ef49bc23ec54acdd2e389174f9bfbd
+      size: 1222
     - path: data/features/train.parquet
       hash: md5
-      md5: 1d7e0527d91cde572c453ccfcda13e79
-      size: 1771694
+      md5: 750532576dcb0835a10a2d0f1a0a1fef
+      size: 19800
     - path: data/features/validation.parquet
       hash: md5
-      md5: ee16b68a7bd6cd956d7d78da849ef8ba
-      size: 388057
+      md5: 2792c6a05cf483eff0e145bf06cd774f
+      size: 9831
     - path: src/techchallenge_fase2/data/__init__.py
       hash: md5
       md5: f8078b820a388d9135e55e960513baf9
       size: 7566
     - path: src/techchallenge_fase2/models/config.py
       hash: md5
-      md5: 44c45929936fe53be9cafa8b5ffeb74b
-      size: 2343
+      md5: 94df9b7fe052a2bcf0f3c6017e77e349
+      size: 5474
     - path: src/techchallenge_fase2/models/factory.py
       hash: md5
-      md5: f05c7db5f762db40223870b12f589aa9
-      size: 4359
+      md5: ef10b6f0ca50179ad319e6811867b67e
+      size: 5563
     - path: src/techchallenge_fase2/models/ncf.py
       hash: md5
-      md5: 849fb81fc892623a2a2eba132192731c
-      size: 6527
-    - path: src/techchallenge_fase2/pipeline/config.py
+      md5: b7c0772b8e817cfed9744961342a93c3
+      size: 15180
+    - path: src/techchallenge_fase2/pipelines/config.py
       hash: md5
       md5: b8d993bca8a448b5524eddfb4a719dd2
       size: 4202
-    - path: src/techchallenge_fase2/pipeline/training.py
+    - path: src/techchallenge_fase2/pipelines/training.py
       hash: md5
-      md5: ab84f79809e3ec92ebdd954d915c2ed4
-      size: 8460
+      md5: 518b17a718929a19cb09c1b372a72ca3
+      size: 15382
     - path: src/techchallenge_fase2/training/__init__.py
       hash: md5
       md5: cf4c16f92f163169e2777d98f79ce8e2
@@ -147,41 +147,41 @@ stages:
     outs:
     - path: models/checkpoints/
       hash: md5
-      md5: 2cf51d4e5a0c9f41c9841ac8a7190317.dir
-      size: 78825146
+      md5: df3a91acf9f6a273b61320d3683bfcca.dir
+      size: 397946
       nfiles: 2
     - path: models/torch_embedding_recommender.pt
       hash: md5
-      md5: 5657b88315198fa31a69b23a22b5b2c9
-      size: 19707623
+      md5: 565273731b636b90e6d905deec12c379
+      size: 100839
   evaluate:
-    cmd: uv run python -m techchallenge_fase2.pipeline.evaluation
+    cmd: uv run python -m techchallenge_fase2.pipelines.evaluation
     deps:
     - path: data/features/test.parquet
       hash: md5
-      md5: 8a72dd6a94860d58a745140379e4f0bb
-      size: 387770
+      md5: 44079b1630d63f4778225d186ed99222
+      size: 9810
     - path: data/features/train.parquet
       hash: md5
-      md5: 1d7e0527d91cde572c453ccfcda13e79
-      size: 1771694
+      md5: 750532576dcb0835a10a2d0f1a0a1fef
+      size: 19800
     - path: models/torch_embedding_recommender.pt
       hash: md5
-      md5: 5657b88315198fa31a69b23a22b5b2c9
-      size: 19707623
+      md5: 565273731b636b90e6d905deec12c379
+      size: 100839
     - path: src/techchallenge_fase2/models/ncf.py
       hash: md5
-      md5: 849fb81fc892623a2a2eba132192731c
-      size: 6527
-    - path: src/techchallenge_fase2/pipeline/config.py
+      md5: b7c0772b8e817cfed9744961342a93c3
+      size: 15180
+    - path: src/techchallenge_fase2/pipelines/config.py
       hash: md5
       md5: b8d993bca8a448b5524eddfb4a719dd2
       size: 4202
-    - path: src/techchallenge_fase2/pipeline/evaluation.py
+    - path: src/techchallenge_fase2/pipelines/evaluation.py
       hash: md5
-      md5: fd747d3659a172dae644d3588ff9c9c7
-      size: 7500
-    - path: src/techchallenge_fase2/pipeline/metrics.py
+      md5: a72c405437cf7b0a868524b572f3ce06
+      size: 12021
+    - path: src/techchallenge_fase2/pipelines/metrics.py
       hash: md5
       md5: d5c12bcbebe3ec59975a330c41c0d103
       size: 2304
@@ -193,5 +193,5 @@ stages:
     outs:
     - path: metrics/recommendation_metrics.json
       hash: md5
-      md5: 0064ec59bb958d72479c8e92eab04393
-      size: 139
+      md5: 6238a028030b4c116014f4d6b2df5080
+      size: 216
