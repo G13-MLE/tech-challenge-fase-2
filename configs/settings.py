@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     mlflow_ease_experiment_name: str = "tech-challenge-ease"
     mlflow_baseline_experiment_name: str = "tech-challenge-baselines"
     mlflow_comparison_experiment_name: str = "tech-challenge-comparison"
+    mlflow_registry_experiment_name: str = "tech-challenge-registry"
+    mlflow_model_name: str = "TechChallengeFase2Recommender"
+    mlflow_registry_staging_tolerance: float = Field(default=0.05, gt=0, le=1)
 
     dvc_remote_url: str = ""
 
