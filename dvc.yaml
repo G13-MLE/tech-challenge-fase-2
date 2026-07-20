@@ -20,6 +20,7 @@ stages:
       - data/processed/interactions.parquet
       - src/techchallenge_fase2/pipelines/config.py
       - src/techchallenge_fase2/pipelines/features.py
+      - src/techchallenge_fase2/pipelines/splits.py
     params:
       - paths.train_features
       - paths.validation_features
@@ -77,7 +78,8 @@ stages:
       - src/techchallenge_fase2/models/ncf.py
       - src/techchallenge_fase2/pipelines/config.py
       - src/techchallenge_fase2/pipelines/evaluation.py
-      - src/techchallenge_fase2/pipelines/metrics.py
+      - src/techchallenge_fase2/pipelines/splits.py
+      - src/techchallenge_fase2/training/metrics.py
     params:
       - paths.metrics
       - evaluation.top_k

@@ -10,6 +10,10 @@ from typing import Any
 import pandas as pd
 
 from techchallenge_fase2.pipelines.config import PipelineParams, load_params
+from techchallenge_fase2.pipelines.splits import (
+    chronological_train_val_test_split,
+    filter_warm_start_three_way,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,38 +70,49 @@ def encode_column(series: pd.Series) -> tuple[pd.Series, list[str]]:
     return series.astype("string").map(mapping).astype("int64"), values
 
 
-def split_frame(
-    frame: pd.DataFrame,
+def split_interactions(
+    interactions_df: pd.DataFrame,
     train_ratio: float,
     validation_ratio: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split interactions chronologically into train, validation and test.
+    """Split interactions chronologically using the canonical splits module.
 
-    Raises:
-        ValueError: Quando o frame é pequeno demais para gerar splits
-            não vazios, o que resultaria em parquets vazios e mapeamentos
-            sem entidades nas próximas etapas do pipeline.
+    Encoda user_index/item_index APENAS no universo warm-start (treino),
+    garantindo que treino/validacao/teste compartilhem o mesmo mapeamento
+    e que o teste contenha somente usuarios e itens vistos em treino.
     """
-    total_rows = len(frame)
-    if total_rows < 3:
-        raise ValueError(
-            f"Frame pequeno demais para split: {total_rows} linhas; "
-            "aumente preprocess.sample_size",
-        )
-    train_end = max(1, int(total_rows * train_ratio))
-    validation_end = int(total_rows * (train_ratio + validation_ratio))
-    validation_end = max(train_end + 1, validation_end)
-    validation_end = min(validation_end, total_rows - 1)
-    train, validation, test = (
-        frame.iloc[:train_end],
-        frame.iloc[train_end:validation_end],
-        frame.iloc[validation_end:],
+    test_ratio = max(0.0, 1.0 - train_ratio - validation_ratio)
+    split_df = interactions_df.rename(
+        columns={"visitorid": "user_id", "itemid": "item_id"}
     )
-    if train.empty or validation.empty or test.empty:
+    split = chronological_train_val_test_split(
+        split_df,
+        val_ratio=validation_ratio,
+        test_ratio=test_ratio,
+    )
+    split = filter_warm_start_three_way(split)
+    train_df = rename_back(split.train_df)
+    val_df = rename_back(split.val_df)
+    test_df = rename_back(split.test_df)
+    if (
+        train_df is None
+        or val_df is None
+        or test_df is None
+        or train_df.empty
+        or val_df.empty
+        or test_df.empty
+    ):
         raise ValueError(
-            "Split produziu partição vazia; aumente preprocess.sample_size",
+            "Split produziu particao vazia; aumente preprocess.sample_size",
         )
-    return train, validation, test
+    return train_df, val_df, test_df
+
+
+def rename_back(frame: pd.DataFrame | None) -> pd.DataFrame | None:
+    """Restaura nomes visitorid/itemid apos o split."""
+    if frame is None:
+        return None
+    return frame.rename(columns={"user_id": "visitorid", "item_id": "itemid"})
 
 
 def save_outputs(
@@ -147,13 +162,18 @@ def run(params: PipelineParams) -> None:
     """Run the feature engineering stage."""
     interactions = load_interactions(params.paths.processed_interactions)
     sessions = add_session_features(interactions, params.features.session_gap_minutes)
-    encoded, mappings = add_encoded_ids(sessions)
-    splits = split_frame(
-        encoded,
+    train_df, val_df, test_df = split_interactions(
+        sessions,
         params.features.train_ratio,
         params.features.validation_ratio,
     )
-    save_outputs(splits, mappings, params)
+    # Encode sobre o universo completo (treino + validacao + teste warm-start)
+    combined = pd.concat([train_df, val_df, test_df], ignore_index=True)
+    encoded, mappings = add_encoded_ids(combined)
+    encoded_train = encoded.iloc[: len(train_df)]
+    encoded_val = encoded.iloc[len(train_df) : len(train_df) + len(val_df)]
+    encoded_test = encoded.iloc[len(train_df) + len(val_df) :]
+    save_outputs((encoded_train, encoded_val, encoded_test), mappings, params)
 
 
 def main() -> None:

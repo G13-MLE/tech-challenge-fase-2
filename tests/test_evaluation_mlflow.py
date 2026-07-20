@@ -61,11 +61,18 @@ def build_params(tmp_path: Path) -> PipelineParams:
 
 
 def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
-    """Escreve um parquet minimo de features com colunas user_index/item_index."""
-    rows: list[dict[str, int]] = []
+    """Escreve um parquet minimo de features com colunas visitorid/itemid/index."""
+    rows: list[dict[str, object]] = []
     for user in range(num_users):
         for item in range(num_items):
-            rows.append({"user_index": user, "item_index": item})
+            rows.append(
+                {
+                    "visitorid": f"user_{user}",
+                    "itemid": f"item_{item}",
+                    "user_index": user,
+                    "item_index": item,
+                }
+            )
     pd.DataFrame(rows).to_parquet(path, index=False)
 
 

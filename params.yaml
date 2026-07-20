@@ -11,7 +11,7 @@ paths:
   metrics: metrics/recommendation_metrics.json
 
 preprocess:
-  sample_size: 50000
+  sample_size: 200000
   random_seed: 42
 
 features:
@@ -25,7 +25,7 @@ features:
 
 training:
   batch_size: 512
-  epochs: 2
+  epochs: 10
   embedding_dim: 32
   learning_rate: 0.001
   negative_samples: 1
