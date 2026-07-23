@@ -6,6 +6,7 @@ real e validar que os utilitarios de tracking sao chamados corretamente.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -153,6 +154,32 @@ class TestCardMetrics:
         assert result["ndcg@5"] == pytest.approx(0.5)
         assert result["precision@5"] == pytest.approx(0.3)
         assert result["recall@5"] == pytest.approx(0.2)
+
+
+class TestEvaluateUsers:
+    """Valida o universo efetivamente usado nas metricas."""
+
+    @staticmethod
+    def test_respeita_limite_de_usuarios(tmp_path: Path) -> None:
+        """Ground truth e contador devem respeitar max_users."""
+        params = build_params(tmp_path)
+        params = replace(params, evaluation=EvaluationParams(top_k=5, max_users=2))
+        train = pd.DataFrame(
+            {
+                "visitorid": [f"user_{i}" for i in range(4)],
+                "itemid": [f"item_{i}" for i in range(4)],
+                "user_index": list(range(4)),
+                "item_index": list(range(4)),
+            }
+        )
+        test = train.copy()
+        test["itemid"] = [f"item_{(i + 1) % 4}" for i in range(4)]
+        test["item_index"] = [(i + 1) % 4 for i in range(4)]
+        model = evaluation_module.load_model(build_checkpoint())
+
+        metrics = evaluation_module.evaluate_users(model, train, test, params)
+
+        assert metrics["evaluated_users"] == 2.0
 
 
 class TestLogEvaluationRun:

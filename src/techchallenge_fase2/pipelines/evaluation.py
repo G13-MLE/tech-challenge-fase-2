@@ -191,7 +191,10 @@ def evaluate_users(
         )
         recommended[user_id] = [item_idx_to_id[i] for i in recommended_idx]
 
-    metrics = compute_recommender_metrics(ground_truth, recommended, k_values=(top_k,))
+    evaluated_truth = {user_id: ground_truth[user_id] for user_id in recommended}
+    metrics = compute_recommender_metrics(
+        evaluated_truth, recommended, k_values=(top_k,)
+    )
     aggregated: dict[str, float] = {}
     for key, value in metrics.items():
         if key == "num_users":
