@@ -224,7 +224,10 @@ class EASETorchRecommender(RecommenderModel):
         if self._config.max_items <= 0 or self._config.max_items >= n_items:
             return x_sparse, np.arange(n_items, dtype=np.int64)
         popularity = np.asarray(x_sparse.sum(axis=0)).ravel()
-        top_indices = np.argsort(-popularity)[: self._config.max_items]
+        # Ordem ascendente e obrigatoria: compute_user_scores,
+        # exclude_seen_items e build_batch_matrix usam np.searchsorted,
+        # que requer um array ordenado ascendentemente.
+        top_indices = np.sort(np.argsort(-popularity)[: self._config.max_items])
         return x_sparse[:, top_indices].astype(np.float64).tocsr(), top_indices
 
     def build_gram(self, x_filtered: sp.csr_matrix) -> torch.Tensor:

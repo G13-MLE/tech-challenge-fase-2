@@ -5,6 +5,7 @@ from __future__ import annotations
 from techchallenge_fase2.models.base import Interaction
 from techchallenge_fase2.models.sklearn_baselines import (
     ItemKNNRecommender,
+    LogisticRegressionConfig,
     LogisticRegressionRecommender,
 )
 
@@ -130,3 +131,55 @@ def test_logreg_recommend_respects_limit() -> None:
     model = make_logreg()
     recs = model.recommend("u1", limit=2)
     assert len(recs) == 2
+
+
+def test_sample_negatives_exclude_positives() -> None:
+    """Negativos amostrados nao devem incluir itens ja consumidos pelo usuario.
+
+    O sampler do LogisticRegression deve rejeitar candidatos que sao
+    positivos do usuario, evitando ruido de label (como fazem NCF e BPR).
+    """
+    interactions: list[Interaction] = [
+        ("u1", "i1"),
+        ("u1", "i2"),
+        ("u1", "i3"),
+        ("u2", "i1"),
+    ]
+    model = LogisticRegressionRecommender(
+        default_limit=3,
+        config=LogisticRegressionConfig(negatives_per_positive=20, random_seed=42),
+    )
+    model.fit(interactions)
+    positives = model.collect_positives()
+    negatives = model.sample_negatives(len(positives))
+    assert len(negatives) > 0, "Deve amostrar negativos"
+    for user_idx, item_idx in negatives:
+        assert item_idx not in model._seen_items.get(user_idx, set()), (
+            f"negativo ({user_idx}, {item_idx}) e um item positivo do usuario"
+        )
+
+
+def test_sample_negatives_all_items_consumed_still_valid() -> None:
+    """Usuario que consumiu todos os itens nao deve gerar negativos invalidos.
+
+    Com catalogo pequeno onde um usuario consumiu todos os itens, o
+    sampler deve evitar gerar (user, item) que seja positivo; nenhum
+    negativo valido existe para esse usuario, entao nenhum negativo deve
+    conter um item positivo.
+    """
+    interactions: list[Interaction] = [
+        ("u1", "i1"),
+        ("u1", "i2"),
+        ("u2", "i1"),
+    ]
+    model = LogisticRegressionRecommender(
+        default_limit=3,
+        config=LogisticRegressionConfig(negatives_per_positive=10, random_seed=7),
+    )
+    model.fit(interactions)
+    positives = model.collect_positives()
+    negatives = model.sample_negatives(len(positives))
+    for user_idx, item_idx in negatives:
+        assert item_idx not in model._seen_items.get(user_idx, set()), (
+            f"negativo ({user_idx}, {item_idx}) e um item positivo do usuario"
+        )

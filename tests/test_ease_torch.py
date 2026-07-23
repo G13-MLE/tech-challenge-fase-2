@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import torch
 
 from techchallenge_fase2.models.base import Interaction
@@ -208,3 +209,96 @@ def test_recommend_batch_matches_single_recommend() -> None:
     single = model.recommend("u1", limit=2)
     batch_results = model.recommend_batch(["u1"], limit=2)
     assert single == batch_results["u1"]
+
+
+# Interacoes com popularidades desbalanceadas para forcar top-3 com
+# indices nao naturalmente ordenados (i5 > i0 ~= i3 > demais).
+# Com max_items=3, os indices filtrados por popularidade decrescente
+# seriam [5, 0, 3] (nao ordenado ascendentemente), expondo o bug do
+# searchsorted em catalogo nao ordenado.
+UNBALANCED_INTERACTIONS: list[Interaction] = [
+    ("u1", "i5"),
+    ("u2", "i5"),
+    ("u3", "i5"),
+    ("u4", "i5"),
+    ("u1", "i0"),
+    ("u2", "i0"),
+    ("u3", "i0"),
+    ("u1", "i3"),
+    ("u2", "i3"),
+    ("u3", "i3"),
+    ("u4", "i1"),
+    ("u4", "i2"),
+    ("u4", "i4"),
+]
+
+
+def test_top_item_indices_sorted_ascending_when_filtered() -> None:
+    """Indices filtrados devem estar ordenados ascendentemente.
+
+    compute_user_scores, exclude_seen_items e build_batch_matrix usam
+    np.searchsorted, que requer um array ordenado ascendentemente.
+    """
+    model = EASETorchRecommender(EASEConfig(lambda_reg=250.0, max_items=3))
+    model.fit(UNBALANCED_INTERACTIONS)
+    top = model._top_item_indices
+    assert len(top) == 3
+    assert np.all(np.diff(top) >= 0), f"top_item_indices deve ser crescente: {top}"
+
+
+def test_warm_user_scores_nonzero_with_filtered_catalog() -> None:
+    """Usuario com interacoes no catalogo filtrado deve ter scores nao nulos.
+
+    Com indices nao ordenados, searchsorted falha em localizar itens
+    consumidos, resultando em user_row todo zero (cold-start para warm).
+    """
+    model = EASETorchRecommender(EASEConfig(lambda_reg=250.0, max_items=3))
+    model.fit(UNBALANCED_INTERACTIONS)
+    user_idx = model._user_to_idx["u1"]
+    scores = model.compute_user_scores(user_idx)
+    assert scores.abs().sum() > 0, "Scores do usuario warm nao devem ser todos zero"
+
+
+def test_exclude_seen_items_works_with_filtered_catalog() -> None:
+    """exclude_seen_items deve atribuir -inf a todos os itens vistos.
+
+    u1 consumiu i0, i3 e i5, todos presentes no top-3 filtrado; portanto
+    todas as posicoes do vetor de scores devem ser -inf apos a exclusao.
+    """
+    model = EASETorchRecommender(EASEConfig(lambda_reg=250.0, max_items=3))
+    model.fit(UNBALANCED_INTERACTIONS)
+    user_idx = model._user_to_idx["u1"]
+    scores = torch.ones(3, dtype=torch.float64)
+    model.exclude_seen_items(user_idx, scores)
+    assert torch.all(scores == float("-inf")), f"seen items nao excluidos: {scores}"
+
+
+def test_recommend_excludes_seen_items_with_filtered_catalog() -> None:
+    """recommend nao deve recomendar itens ja consumidos com catalogo filtrado.
+
+    Cenario com 6 itens onde o top-3 filtrado (por popularidade) e
+    {i0, i3, i5}. O usuario u1 consumiu apenas i0 (no catalogo filtrado),
+    deixando i3 e i5 como nao consumidos; a recomendacao deve vir desse
+    conjunto, nunca de i0.
+    """
+    interactions: list[Interaction] = [
+        ("u1", "i0"),
+        ("u2", "i0"),
+        ("u2", "i5"),
+        ("u2", "i3"),
+        ("u3", "i0"),
+        ("u3", "i5"),
+        ("u3", "i3"),
+        ("u4", "i5"),
+        ("u5", "i5"),
+        ("u5", "i3"),
+        ("u4", "i1"),
+        ("u4", "i2"),
+        ("u5", "i4"),
+    ]
+    model = EASETorchRecommender(EASEConfig(lambda_reg=250.0, max_items=3))
+    model.fit(interactions)
+    recs = model.recommend("u1", limit=2)
+    seen = {"i0"}
+    for item in recs:
+        assert item not in seen, f"item ja consumido recomendado: {item}"

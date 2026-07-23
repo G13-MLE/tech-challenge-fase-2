@@ -20,7 +20,8 @@ export PRE_COMMIT_HOME
 	dvc-push dvc-pull dvc-status \
 	docker-build docker-build-gpu \
 	mlflow-up mlflow-down \
-	baselines ease compare-models
+	baselines ease compare-models \
+	register promote promote-dry-run inference
 
 # ---------------------------------------------------------------------------
 # Help
@@ -51,6 +52,9 @@ help:
 	@echo "  make baselines        - Rodar pipeline de baselines (8 modelos) no MLflow"
 	@echo "  make ease             - Rodar pipeline dedicado do EASE^ no MLflow"
 	@echo "  make compare-models   - Comparar modelos vs baselines (min. 4 metricas)"
+	@echo "  make register         - Registrar campeao no MLflow Model Registry (Staging)"
+	@echo "  make promote          - Validar Staging e promover para Production"
+	@echo "  make inference        - Carregar modelo de Production e recomendar"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-build     - Build imagem CPU (default)"
@@ -108,6 +112,26 @@ compare-models:
 	@echo "Comparando modelos de recomendacao vs baselines..."
 	uv run python -m techchallenge_fase2.pipelines.run_compare_models
 	@echo "Comparacao concluida! Relatorio em reports/model_comparison_report.md"
+
+# ---------------------------------------------------------------------------
+# Model Registry (issue #16)
+# ---------------------------------------------------------------------------
+register:
+	@echo "Registrando campeao no MLflow Model Registry (Staging)..."
+	uv run python -m techchallenge_fase2.pipelines.register_model
+
+promote:
+	@echo "Validando Staging e promovendo para Production..."
+	uv run python -m techchallenge_fase2.pipelines.promote_model
+
+promote-dry-run:
+	@echo "Validando Staging (dry-run, sem promover)..."
+	uv run python -m techchallenge_fase2.pipelines.promote_model --dry-run
+
+inference:
+	@echo "Carregando modelo de Production para inferencia..."
+	@read -p "user_id: " uid && \
+		uv run python -m techchallenge_fase2.inference.load_model recommend --user-id $$uid
 
 # ---------------------------------------------------------------------------
 # Pipeline DVC
