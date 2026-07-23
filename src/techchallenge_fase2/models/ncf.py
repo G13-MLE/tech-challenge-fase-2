@@ -217,16 +217,19 @@ class NeuralRecommender(RecommenderModel):
     # --- Treino inline para IDs string ---
 
     def needs_string_mapping(self, interactions: list[Interaction]) -> bool:
-        """Detecta se os IDs precisam mapeamento str->int."""
+        """Detecta IDs que nao sao indices validos dos embeddings atuais."""
         if not interactions:
             return False
-        sample_user, sample_item = interactions[0]
-        try:
-            int(sample_user)
-            int(sample_item)
-            return False
-        except ValueError:
-            return True
+        for user_id, item_id in interactions:
+            try:
+                user_idx, item_idx = int(user_id), int(item_id)
+            except ValueError:
+                return True
+            if not 0 <= user_idx < self._model.config.num_users:
+                return True
+            if not 0 <= item_idx < self._model.config.num_items:
+                return True
+        return False
 
     def fit_with_string_ids(self, interactions: list[Interaction]) -> None:
         """Mapeia str->int, reconstrui NCF e treina inline."""

@@ -43,6 +43,7 @@ from techchallenge_fase2.pipelines.report import (
 )
 from techchallenge_fase2.pipelines.splits import (
     chronological_train_val_test_split,
+    filter_seen_items_from_ground_truth,
     filter_warm_start_three_way,
 )
 from techchallenge_fase2.training.metrics import compute_recommender_metrics
@@ -302,10 +303,13 @@ def temporal_holdout_split(
         interactions_df, val_ratio=val_ratio, test_ratio=test_ratio
     )
     split = filter_warm_start_three_way(split)
+    ground_truth = filter_seen_items_from_ground_truth(
+        split.test_ground_truth, split.train_interactions
+    )
     all_items_by_user = group_items_by_user(interactions_df)
     return (
         split.train_interactions,
-        split.test_ground_truth,
+        ground_truth,
         all_items_by_user,
     )
 

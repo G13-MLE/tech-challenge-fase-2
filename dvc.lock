@@ -24,7 +24,7 @@ stages:
         paths.processed_interactions: data/processed/interactions.parquet
         paths.raw_events: data/raw/events.csv
         preprocess.random_seed: 42
-        preprocess.sample_size: 50000
+        preprocess.sample_size: 200000
     outs:
     - path: data/processed/interactions.parquet
       hash: md5
@@ -43,8 +43,12 @@ stages:
       size: 4202
     - path: src/techchallenge_fase2/pipelines/features.py
       hash: md5
-      md5: ee7b491820672167ec8b0def800ded69
-      size: 5860
+      md5: a0d4865ccd1010ef20b16f1a1916b171
+      size: 6655
+    - path: src/techchallenge_fase2/pipelines/splits.py
+      hash: md5
+      md5: 5db0b61024e1725bdaf3d58d51547442
+      size: 12303
     params:
       params.yaml:
         features.session_gap_minutes: 30
@@ -97,16 +101,16 @@ stages:
       size: 7566
     - path: src/techchallenge_fase2/models/config.py
       hash: md5
-      md5: 94df9b7fe052a2bcf0f3c6017e77e349
-      size: 5474
+      md5: 6c19f9d2fdb51713701c0f513aedfa95
+      size: 5724
     - path: src/techchallenge_fase2/models/factory.py
       hash: md5
       md5: ef10b6f0ca50179ad319e6811867b67e
       size: 5563
     - path: src/techchallenge_fase2/models/ncf.py
       hash: md5
-      md5: b7c0772b8e817cfed9744961342a93c3
-      size: 15180
+      md5: 1f162cee66582e21dd6658fade187c17
+      size: 15138
     - path: src/techchallenge_fase2/pipelines/config.py
       hash: md5
       md5: b8d993bca8a448b5524eddfb4a719dd2
@@ -138,7 +142,7 @@ stages:
         paths.model_checkpoint: models/torch_embedding_recommender.pt
         training.batch_size: 512
         training.embedding_dim: 32
-        training.epochs: 2
+        training.epochs: 10
         training.learning_rate: 0.001
         training.min_delta: 0.0001
         training.negative_samples: 1
@@ -147,12 +151,12 @@ stages:
     outs:
     - path: models/checkpoints/
       hash: md5
-      md5: df3a91acf9f6a273b61320d3683bfcca.dir
+      md5: c78726879fae6c6a8b272d6aac6db219.dir
       size: 397946
       nfiles: 2
     - path: models/torch_embedding_recommender.pt
       hash: md5
-      md5: 565273731b636b90e6d905deec12c379
+      md5: 34d95d5e5d4a48773b199a4af33996f6
       size: 100839
   evaluate:
     cmd: uv run python -m techchallenge_fase2.pipelines.evaluation
@@ -167,24 +171,28 @@ stages:
       size: 19800
     - path: models/torch_embedding_recommender.pt
       hash: md5
-      md5: 565273731b636b90e6d905deec12c379
+      md5: 34d95d5e5d4a48773b199a4af33996f6
       size: 100839
     - path: src/techchallenge_fase2/models/ncf.py
       hash: md5
-      md5: b7c0772b8e817cfed9744961342a93c3
-      size: 15180
+      md5: 1f162cee66582e21dd6658fade187c17
+      size: 15138
     - path: src/techchallenge_fase2/pipelines/config.py
       hash: md5
       md5: b8d993bca8a448b5524eddfb4a719dd2
       size: 4202
     - path: src/techchallenge_fase2/pipelines/evaluation.py
       hash: md5
-      md5: a72c405437cf7b0a868524b572f3ce06
-      size: 12021
-    - path: src/techchallenge_fase2/pipelines/metrics.py
+      md5: 67b8a64f777ef4e1d53defb73fc27e52
+      size: 11448
+    - path: src/techchallenge_fase2/pipelines/splits.py
       hash: md5
-      md5: d5c12bcbebe3ec59975a330c41c0d103
-      size: 2304
+      md5: 5db0b61024e1725bdaf3d58d51547442
+      size: 12303
+    - path: src/techchallenge_fase2/training/metrics.py
+      hash: md5
+      md5: 8bfc0104f9660a26992d8d3eea433c6a
+      size: 9977
     params:
       params.yaml:
         evaluation.max_users: 200
@@ -193,5 +201,5 @@ stages:
     outs:
     - path: metrics/recommendation_metrics.json
       hash: md5
-      md5: 6238a028030b4c116014f4d6b2df5080
-      size: 216
+      md5: f5fa1eb3607e35b9c6946dc72741e9ee
+      size: 202

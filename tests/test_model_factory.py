@@ -185,6 +185,24 @@ class RecommenderModelFactoryTest(unittest.TestCase):
         self.assertEqual(model._model.config.num_users, 3)
         self.assertEqual(model._model.config.num_items, 4)
 
+    def test_neural_models_map_sparse_numeric_ids(self) -> None:
+        """IDs numericos esparsos devem receber mapeamento interno."""
+        interactions = [("1125936", "33661"), ("1149227", "29757")]
+        for model_type in (ModelType.NEURAL_NCF, ModelType.TORCH_EMBEDDING):
+            model = self.factory.create(ModelConfig(model_type))
+            self.assertTrue(model.needs_string_mapping(interactions))
+            model.fit(interactions)
+            recommendations = model.recommend("1125936", limit=1)
+            self.assertEqual(recommendations, ["29757"])
+
+    def test_neural_models_preserve_encoded_integer_ids(self) -> None:
+        """Indices contiguos validos preservam o modo usado pelo DVC."""
+        interactions = [("0", "0"), ("2", "3")]
+        config_kwargs = {"num_users": 3, "num_items": 4}
+        for model_type in (ModelType.NEURAL_NCF, ModelType.TORCH_EMBEDDING):
+            model = self.factory.create(ModelConfig(model_type, **config_kwargs))
+            self.assertFalse(model.needs_string_mapping(interactions))
+
     def test_creates_ease_torch_model(self) -> None:
         """Factory cria o recomendador EASE^ (candidato a campeao)."""
         config = ModelConfig(

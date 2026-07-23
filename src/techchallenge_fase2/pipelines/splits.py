@@ -5,6 +5,11 @@ Fornece duas estrategias de split cronologico:
 - `chronological_train_val_test_split`: 3-way (treino/validacao/teste)
   com razao 70/15/15 por padrao, para selecao de hiperparametros e
   early stopping, conforme o plano da issue #15.
+
+Helpers adicionais:
+- `filter_warm_start` / `filter_warm_start_three_way`: removem cold-start.
+- `filter_seen_items_from_ground_truth`: remove do ground truth itens ja
+  consumidos no treino (semantica unificada entre DVC e comparison).
 """
 
 from __future__ import annotations
@@ -45,6 +50,9 @@ class ChronologicalThreeWaySplit:
         test_ground_truth: Mapeamento user_id -> itens relevantes no teste.
         train_cutoff: Timestamp do corte entre treino e validacao.
         val_cutoff: Timestamp do corte entre validacao e teste.
+        train_df: DataFrame ordenado com as interacoes de treino.
+        val_df: DataFrame ordenado com as interacoes de validacao.
+        test_df: DataFrame ordenado com as interacoes de teste.
     """
 
     train_interactions: list[Interaction]
@@ -54,6 +62,9 @@ class ChronologicalThreeWaySplit:
     test_ground_truth: dict[str, set[str]]
     train_cutoff: pd.Timestamp
     val_cutoff: pd.Timestamp
+    train_df: pd.DataFrame | None = None
+    val_df: pd.DataFrame | None = None
+    test_df: pd.DataFrame | None = None
 
 
 def chronological_holdout_split(
@@ -110,11 +121,12 @@ def chronological_train_val_test_split(
             a coluna de timestamp informada.
         val_ratio: Fracao das interacoes reservada para validacao.
         test_ratio: Fracao das interacoes mais recentes reservada para teste.
-        timestamp_col: Nome da coluna de timestamp para ordenacao cronologica.
+        timestamp_col: Nome da coluna de timestamp para ordenacao.
 
     Returns:
         Objeto ChronologicalThreeWaySplit com treino, validacao, teste
-        e os respectivos ground truths.
+        e os respectivos ground truths, alem dos DataFrames ordenados
+        (``train_df``, ``val_df``, ``test_df``).
     """
     ordered = interactions_df.sort_values(timestamp_col).reset_index(drop=True)
     n_total = len(ordered)
@@ -139,12 +151,13 @@ def chronological_train_val_test_split(
         test_ground_truth=test_ground_truth,
         train_cutoff=train_cutoff,
         val_cutoff=val_cutoff,
+        train_df=train_df,
+        val_df=val_df,
+        test_df=test_df,
     )
 
 
-def filter_warm_start(
-    split: ChronologicalSplit,
-) -> ChronologicalSplit:
+def filter_warm_start(split: ChronologicalSplit) -> ChronologicalSplit:
     """Remove cold-start users e itens do ground truth.
 
     Mantem apenas usuarios e itens presentes no treino para que todos os
@@ -183,12 +196,15 @@ def filter_warm_start_three_way(
 
     Mantem apenas usuarios e itens presentes no treino para que todos os
     modelos possam gerar predicoes (EASE^ e KNN nao suportam cold-start).
+    Filtra tambem os DataFrames ``train_df``, ``val_df`` e ``test_df``
+    (quando presentes) para conter apenas usuarios e itens warm-start.
 
     Args:
         split: Resultado de um split cronologico 3-way.
 
     Returns:
-        Novo ChronologicalThreeWaySplit com ground truths filtrados.
+        Novo ChronologicalThreeWaySplit com ground truths e DataFrames
+        filtrados.
     """
     train_users = {uid for uid, _ in split.train_interactions}
     train_items = {iid for _, iid in split.train_interactions}
@@ -198,6 +214,11 @@ def filter_warm_start_three_way(
     filtered_test_truth, filtered_test = filter_ground_truth(
         split.test_ground_truth, train_users, train_items
     )
+    filtered_train_df = filter_frame_warm_start(
+        split.train_df, train_users, train_items
+    )
+    filtered_val_df = filter_frame_warm_start(split.val_df, train_users, train_items)
+    filtered_test_df = filter_frame_warm_start(split.test_df, train_users, train_items)
     return ChronologicalThreeWaySplit(
         train_interactions=split.train_interactions,
         val_interactions=filtered_val,
@@ -206,7 +227,25 @@ def filter_warm_start_three_way(
         test_ground_truth=filtered_test_truth,
         train_cutoff=split.train_cutoff,
         val_cutoff=split.val_cutoff,
+        train_df=filtered_train_df,
+        val_df=filtered_val_df,
+        test_df=filtered_test_df,
     )
+
+
+def filter_frame_warm_start(
+    frame: pd.DataFrame | None,
+    train_users: set[str],
+    train_items: set[str],
+) -> pd.DataFrame | None:
+    """Filtra um DataFrame mantendo apenas (user, item) warm-start."""
+    if frame is None:
+        return None
+    is_warm = frame.apply(
+        lambda row: str(row.user_id) in train_users and str(row.item_id) in train_items,
+        axis=1,
+    )
+    return frame.loc[is_warm].reset_index(drop=True)
 
 
 def filter_ground_truth(
@@ -226,6 +265,38 @@ def filter_ground_truth(
             for item_id in warm_items:
                 filtered_interactions.append((user_id, item_id))
     return filtered_truth, filtered_interactions
+
+
+def filter_seen_items_from_ground_truth(
+    ground_truth: dict[str, set[str]],
+    train_interactions: list[Interaction],
+) -> dict[str, set[str]]:
+    """Remove do ground truth os itens ja consumidos no treino.
+
+    Avalia a recomendacao de itens NOVOS: um item que o usuario ja viu
+    em treino nao conta como relevante no teste, mesmo que apareca no
+    periodo de teste. Semantica unificada entre o pipeline DVC do NCF
+    (``evaluation.py``) e o pipeline de comparacao (``run_baselines``).
+
+    Args:
+        ground_truth: Mapeamento user_id -> itens relevantes (apos
+            split cronologico e, opcionalmente, warm-start).
+        train_interactions: Interacoes de treino (user_id, item_id).
+
+    Returns:
+        Novo mapeamento user_id -> itens relevantes filtrado. Usuarios
+        sem nenhum item relevante apos o filtro sao omitidos.
+    """
+    seen_by_user: dict[str, set[str]] = {}
+    for user_id, item_id in train_interactions:
+        seen_by_user.setdefault(user_id, set()).add(item_id)
+    filtered: dict[str, set[str]] = {}
+    for user_id, items in ground_truth.items():
+        seen = seen_by_user.get(user_id, set())
+        remaining = items - seen
+        if remaining:
+            filtered[user_id] = remaining
+    return filtered
 
 
 def materialize_interactions(df: pd.DataFrame) -> list[Interaction]:

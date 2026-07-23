@@ -29,13 +29,10 @@ from techchallenge_fase2.pipelines.common import (
     safe_get_dataset_version,
 )
 from techchallenge_fase2.pipelines.config import PipelineParams, load_params
-from techchallenge_fase2.pipelines.metrics import (
-    hit_rate_at_k,
-    map_at_k,
-    ndcg_at_k,
-    precision_at_k,
-    recall_at_k,
+from techchallenge_fase2.pipelines.splits import (
+    filter_seen_items_from_ground_truth,
 )
+from techchallenge_fase2.training.metrics import compute_recommender_metrics
 from techchallenge_fase2.training.mlflow_tracking import (
     MLflowConfig,
     log_artifacts,
@@ -88,23 +85,26 @@ def load_features(path: Path) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
-def build_relevance(frame: pd.DataFrame) -> dict[int, set[int]]:
-    """Build relevant items per user."""
-    relevance: dict[int, set[int]] = {}
-    unique_pairs = frame[["user_index", "item_index"]].drop_duplicates()
+def build_ground_truth(frame: pd.DataFrame) -> dict[str, set[str]]:
+    """Constroi itens relevantes por usuario a partir das features de teste."""
+    truth: dict[str, set[str]] = {}
+    unique_pairs = frame[["visitorid", "itemid"]].drop_duplicates()
     for row in unique_pairs.itertuples(index=False):
-        relevance.setdefault(int(row.user_index), set()).add(int(row.item_index))
-    return relevance
+        truth.setdefault(str(row.visitorid), set()).add(str(row.itemid))
+    return truth
 
 
-def select_users(relevance: dict[int, set[int]], max_users: int) -> list[int]:
-    """Select a deterministic user subset for evaluation."""
-    users = sorted(relevance)
-    return users if max_users <= 0 else users[:max_users]
+def build_train_interactions(frame: pd.DataFrame) -> list[tuple[str, str]]:
+    """Constroi lista de interacoes (user_id, item_id) a partir do treino."""
+    unique_pairs = frame[["visitorid", "itemid"]].drop_duplicates()
+    return [
+        (str(row.visitorid), str(row.itemid))
+        for row in unique_pairs.itertuples(index=False)
+    ]
 
 
-def build_seen_items(frame: pd.DataFrame) -> dict[int, set[int]]:
-    """Build train items that should not be recommended back."""
+def build_seen_indexes(frame: pd.DataFrame) -> dict[int, set[int]]:
+    """Mantem versao indexada dos itens ja vistos (para exclusao de candidatos)."""
     seen: dict[int, set[int]] = {}
     unique_pairs = frame[["user_index", "item_index"]].drop_duplicates()
     for row in unique_pairs.itertuples(index=False):
@@ -112,25 +112,25 @@ def build_seen_items(frame: pd.DataFrame) -> dict[int, set[int]]:
     return seen
 
 
-def build_candidate_items(frame: pd.DataFrame) -> set[int]:
-    """Build the item catalog learned during training."""
+def build_candidate_indexes(frame: pd.DataFrame) -> set[int]:
+    """Catalogo de itens (indices inteiros) aprendidos no treino."""
     return set(frame["item_index"].astype("int64").unique().tolist())
 
 
-def filter_evaluable_relevance(
-    relevance: dict[int, set[int]],
-    seen: dict[int, set[int]],
-    candidate_items: set[int],
-) -> dict[int, set[int]]:
-    """Keep only warm-start users and recommendable relevant items."""
-    filtered: dict[int, set[int]] = {}
-    for user, relevant_items in relevance.items():
-        if user not in seen:
-            continue
-        available_items = (relevant_items & candidate_items) - seen[user]
-        if available_items:
-            filtered[user] = available_items
-    return filtered
+def build_user_index_to_id(frame: pd.DataFrame) -> dict[int, str]:
+    """Mapeia indice interno do usuario para visitorid original."""
+    pairs = frame[["user_index", "visitorid"]].drop_duplicates()
+    return {
+        int(row.user_index): str(row.visitorid) for row in pairs.itertuples(index=False)
+    }
+
+
+def build_item_index_to_id(frame: pd.DataFrame) -> dict[int, str]:
+    """Mapeia indice interno do item para itemid original."""
+    pairs = frame[["item_index", "itemid"]].drop_duplicates()
+    return {
+        int(row.item_index): str(row.itemid) for row in pairs.itertuples(index=False)
+    }
 
 
 def recommend_for_user(
@@ -158,82 +158,50 @@ def evaluate_users(
     test: pd.DataFrame,
     params: PipelineParams,
 ) -> dict[str, float]:
-    """Evaluate recommendations for selected users."""
-    seen = build_seen_items(train)
-    candidate_items = build_candidate_items(train)
-    relevance = filter_evaluable_relevance(
-        build_relevance(test),
-        seen,
-        candidate_items,
-    )
-    users = select_users(relevance, params.evaluation.max_users)
-    scores = [
-        score_user(model, user, relevance, seen, candidate_items, params)
-        for user in users
-    ]
-    return summarize_scores(scores, params.evaluation.top_k, len(users))
-
-
-def score_user(
-    model: NeuralCollaborativeFiltering,
-    user: int,
-    relevance: dict[int, set[int]],
-    seen: dict[int, set[int]],
-    candidate_items: set[int],
-    params: PipelineParams,
-) -> dict[str, float]:
-    """Score recommendations for one user."""
+    """Evaluate recommendations aggregating multi-user metrics."""
     top_k = params.evaluation.top_k
-    recommended = recommend_for_user(
-        model,
-        user,
-        candidate_items=candidate_items,
-        excluded=seen.get(user, set()),
-        top_k=top_k,
+    seen_idx = build_seen_indexes(train)
+    candidate_idx = build_candidate_indexes(train)
+    user_idx_to_id = build_user_index_to_id(train)
+    item_idx_to_id = build_item_index_to_id(train)
+
+    ground_truth_raw = build_ground_truth(test)
+    train_interactions = build_train_interactions(train)
+    ground_truth = filter_seen_items_from_ground_truth(
+        ground_truth_raw, train_interactions
     )
-    return compute_scores(recommended, relevance[user], top_k)
 
+    evaluable_user_indexes = [
+        user_idx
+        for user_idx, user_id in user_idx_to_id.items()
+        if user_id in ground_truth
+    ]
+    if params.evaluation.max_users > 0:
+        evaluable_user_indexes = evaluable_user_indexes[: params.evaluation.max_users]
 
-def compute_scores(
-    recommended: list[int],
-    relevant: set[int],
-    top_k: int,
-) -> dict[str, float]:
-    """Compute all ranking metrics for one user."""
-    return {
-        "hit_rate": hit_rate_at_k(recommended, relevant, top_k),
-        "map": map_at_k(recommended, relevant, top_k),
-        "ndcg": ndcg_at_k(recommended, relevant, top_k),
-        "precision": precision_at_k(recommended, relevant, top_k),
-        "recall": recall_at_k(recommended, relevant, top_k),
-    }
+    recommended: dict[str, list[str]] = {}
+    for user_idx in evaluable_user_indexes:
+        user_id = user_idx_to_id[user_idx]
+        recommended_idx = recommend_for_user(
+            model,
+            user_idx,
+            candidate_items=candidate_idx,
+            excluded=seen_idx.get(user_idx, set()),
+            top_k=top_k,
+        )
+        recommended[user_id] = [item_idx_to_id[i] for i in recommended_idx]
 
-
-def summarize_scores(
-    scores: list[dict[str, float]],
-    top_k: int,
-    users: int,
-) -> dict[str, float]:
-    """Aggregate per-user metrics."""
-    if not scores:
-        return empty_metrics(top_k)
-    keys = scores[0].keys()
-    metrics = {f"{key}_at_{top_k}": average_score(scores, key) for key in keys}
-    metrics["evaluated_users"] = float(users)
-    return metrics
-
-
-def average_score(scores: list[dict[str, float]], key: str) -> float:
-    """Average one metric key across users."""
-    return float(np.mean([score[key] for score in scores]))
-
-
-def empty_metrics(top_k: int) -> dict[str, float]:
-    """Return zero metrics when no evaluable user exists."""
-    names = ["hit_rate", "map", "ndcg", "precision", "recall"]
-    metrics = {f"{name}_at_{top_k}": 0.0 for name in names}
-    metrics["evaluated_users"] = 0.0
-    return metrics
+    evaluated_truth = {user_id: ground_truth[user_id] for user_id in recommended}
+    metrics = compute_recommender_metrics(
+        evaluated_truth, recommended, k_values=(top_k,)
+    )
+    aggregated: dict[str, float] = {}
+    for key, value in metrics.items():
+        if key == "num_users":
+            aggregated["evaluated_users"] = float(value)
+        else:
+            aggregated[key.replace("@", "_at_")] = float(value)
+    return aggregated
 
 
 def save_metrics(metrics: dict[str, float], path: Path) -> None:

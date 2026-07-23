@@ -159,16 +159,19 @@ class TorchEmbeddingRecommender(RecommenderModel):
     # --- Treino com BPR ---
 
     def needs_string_mapping(self, interactions: list[Interaction]) -> bool:
-        """Detecta se os IDs precisam mapeamento str->int."""
+        """Detecta IDs que nao sao indices validos dos embeddings atuais."""
         if not interactions:
             return False
-        sample_user, sample_item = interactions[0]
-        try:
-            int(sample_user)
-            int(sample_item)
-            return False
-        except ValueError:
-            return True
+        num_users = self.network.user_embeddings.num_embeddings
+        num_items = self.network.item_embeddings.num_embeddings
+        for user_id, item_id in interactions:
+            try:
+                user_idx, item_idx = int(user_id), int(item_id)
+            except ValueError:
+                return True
+            if not 0 <= user_idx < num_users or not 0 <= item_idx < num_items:
+                return True
+        return False
 
     def fit_with_string_ids(self, interactions: list[Interaction]) -> None:
         """Mapeia str->int, reconstrui rede e treina inline com BPR."""
