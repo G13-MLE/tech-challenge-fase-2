@@ -46,6 +46,11 @@ from techchallenge_fase2.training.mlflow_tracking import (
 )
 from techchallenge_fase2.training.model_card import build_model_card
 
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover - tqdm e dependencia obrigatoria
+    tqdm = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 # Nome do experimento MLflow para a avaliacao do NCF orquestrada pelo DVC.
@@ -167,9 +172,19 @@ def evaluate_users(
         candidate_items,
     )
     users = select_users(relevance, params.evaluation.max_users)
+    logger.info(
+        "  avaliando %d usuarios (max_users=%d) sobre catalogo de %d itens, top_k=%d",
+        len(users),
+        params.evaluation.max_users,
+        len(candidate_items),
+        params.evaluation.top_k,
+    )
+    iterator = users
+    if tqdm is not None:
+        iterator = tqdm(users, desc="  eval", unit="user")
     scores = [
         score_user(model, user, relevance, seen, candidate_items, params)
-        for user in users
+        for user in iterator
     ]
     return summarize_scores(scores, params.evaluation.top_k, len(users))
 
@@ -317,6 +332,8 @@ def card_metrics(metrics: dict[str, float], top_k: int) -> dict[str, float]:
 
 def run(params: PipelineParams) -> None:
     """Run the evaluation stage with MLflow tracking."""
+    logger.info("=" * 70)
+    logger.info("[STAGE 4/4] EVALUATE - metricas Top-K do NCF + MLflow tracking")
     load_dotenv_silent()
 
     # Configura MLflow (tracking URI + experimento) e abre um run dedicado.
@@ -333,6 +350,12 @@ def run(params: PipelineParams) -> None:
     model = load_model(checkpoint)
     train = load_features(params.paths.train_features)
     test = load_features(params.paths.test_features)
+    logger.info(
+        "  treino=%d interacoes | teste=%d interacoes | top_k=%d",
+        len(train),
+        len(test),
+        params.evaluation.top_k,
+    )
     metrics = evaluate_users(model, train, test, params)
     save_metrics(metrics, params.paths.metrics)
 
@@ -340,10 +363,17 @@ def run(params: PipelineParams) -> None:
         log_evaluation_run(params, checkpoint, metrics, dataset_version)
 
     logger.info(
+        "  metricas @%d: %s",
+        params.evaluation.top_k,
+        {k: round(v, 4) for k, v in metrics.items() if k != "evaluated_users"},
+    )
+    logger.info(
         "Avaliacao concluida: evaluated_users=%d top_k=%d",
         int(metrics.get("evaluated_users", 0.0)),
         params.evaluation.top_k,
     )
+    logger.info("[STAGE 4/4] EVALUATE concluido")
+    logger.info("=" * 70)
 
 
 def main() -> None:

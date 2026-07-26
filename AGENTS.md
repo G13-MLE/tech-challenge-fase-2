@@ -65,4 +65,12 @@ inferencia) e `src/techchallenge_fase2/pipelines/register_model.py`,
 
 ## Importante
 - Sempre execute `make test` e `make lint` após qualquer atualização de código.
+- `make pipeline-live` e `make train-live` executam os estágios via Python
+  direto (sem DVC) e exibem `tqdm` + logs em tempo real; prefira-os para
+  iterar rápido. `make pipeline` / `make train` usam DVC (`dvc repro -v`).
+- Para treinar no Docker reaproveitando a stack MLflow: `make docker-train`
+  (perfil `train` no `docker/docker-compose.yml`).
+- `make inference` carrega de `models:/TechChallengeFase2Recommender/Production`.
+- O Model Card humano-legível está em `docs/MODEL_CARD.md`; o JSON logado
+  em cada run do MLflow é gerado por `src/techchallenge_fase2/training/model_card.py`.
 - Sempre que utilizado o português utilize linguagem técnica e português correto, com acentuação e sem erros.

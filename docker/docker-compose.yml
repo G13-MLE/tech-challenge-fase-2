@@ -117,6 +117,47 @@ services:
     networks:
       - mlflow-network
 
+  # ---------------------------------------------------------------------------
+  # Train (perfil opcional): roda o pipeline DVC inteiro dentro do container
+  # cpu reaproveitando o stack MLflow. Inicia apenas com `--profile train`.
+  # ---------------------------------------------------------------------------
+  train:
+    profiles: ["train"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: cpu
+    image: techchallenge-fase2:latest
+    container_name: techchallenge-fase2-train
+    env_file:
+      - ../.env
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow-server:${MLFLOW_PORT:-5000}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-minioadmin_secret_key}
+      PYTHONPATH: /home/appuser/app/src
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ../data:/home/appuser/app/data
+      - ../models:/home/appuser/app/models
+      - ../metrics:/home/appuser/app/metrics
+      - ../reports:/home/appuser/app/reports
+      - ../params.yaml:/home/appuser/app/params.yaml
+    command:
+      - /bin/sh
+      - -c
+      - |
+        python -m techchallenge_fase2.pipelines.preprocess &&
+        python -m techchallenge_fase2.pipelines.features &&
+        python -m techchallenge_fase2.pipelines.training &&
+        python -m techchallenge_fase2.pipelines.evaluation
+    depends_on:
+      mlflow-server:
+        condition: service_healthy
+    networks:
+      - mlflow-network
+
 volumes:
   postgres_data:
   minio_data:

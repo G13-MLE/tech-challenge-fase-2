@@ -10,8 +10,10 @@ paths:
   checkpoint_dir: models/checkpoints
   metrics: metrics/recommendation_metrics.json
 
+# Pipeline configurado para o dataset RetailRocket completo (>=1.4M interacoes).
+# sample_size = 0 desativa a amostragem (usar o dataset real).
 preprocess:
-  sample_size: 50000
+  sample_size: 0
   random_seed: 42
 
 features:
@@ -23,16 +25,19 @@ features:
     addtocart: 3.0
     transaction: 5.0
 
+# Hiperparametros ajustados para treino real do NCF no catalogo completo.
+# epochs=20 com patience=5+early stopping tipicamente encerra entre 7-15 epocas.
 training:
-  batch_size: 512
-  epochs: 2
-  embedding_dim: 32
+  batch_size: 1024
+  epochs: 20
+  embedding_dim: 64
   learning_rate: 0.001
   negative_samples: 1
   random_seed: 42
-  patience: 3
+  patience: 5
   min_delta: 0.0001
 
+# Avaliacao Top-K em 1000 usuarios (amostra representativa do conjunto de teste).
 evaluation:
-  top_k: 5
-  max_users: 200
+  top_k: 10
+  max_users: 1000

@@ -130,13 +130,31 @@ def sample_negative_item(
 ) -> int:
     """Sample one item that the user has not interacted with.
 
-    Usa a diferenca de conjuntos em vez de rejeicao amostral, evitando laco
-    infinito em catalogos parcialmente saturados e nunca retorna um item
-    positivo disfarcado de negativo.
+    Usa amostragem por rejeicao (custo amortizado O(1) por chamada em
+    catalogos esparsos), amostrando um item uniformemente em [0, num_items)
+    e descartando candidatos que ja foram vistos. Para o caso edge de
+    catalogos pequenos/saturados faz fallback para a diferenca de conjuntos,
+    garantindo que nunca retorna um item positivo disfarcado de negativo.
 
     Raises:
         ValueError: Quando o usuario ja interagiu com todos os itens do
             catalogo (nao existe negativo valido).
+    """
+    max_attempts = 50
+    for _ in range(max_attempts):
+        candidate = int(rng.integers(0, num_items))
+        if candidate not in user_items:
+            return candidate
+    return sample_negative_from_missing(user_items, num_items, rng)
+
+
+def sample_negative_from_missing(
+    user_items: set[int], num_items: int, rng: np.random.Generator
+) -> int:
+    """Fallback deterministico: amostra um item negativo da diferenca.
+
+    Usado quando a rejeicao falha (catalogo pequeno/saturado). Levanta
+    ``ValueError`` quando nenhum item negativo existe.
     """
     missing = list(set(range(num_items)) - user_items)
     if not missing:
@@ -393,6 +411,8 @@ def log_training_run(
 
 def run(params: PipelineParams) -> None:
     """Run the training stage with MLflow tracking."""
+    logger.info("=" * 70)
+    logger.info("[STAGE 3/4] TRAIN - treino do NCF (PyTorch) com MLflow tracking")
     load_dotenv_silent()
     set_seed(params.training.random_seed)
 
@@ -410,9 +430,26 @@ def run(params: PipelineParams) -> None:
     val_frame = load_features(params.paths.validation_features)
     users, items = load_entity_counts(params.paths.mappings)
     model = create_ncf_model(params, users, items)
+    logger.info(
+        "  catalogo: usuarios=%d itens=%d embedding_dim=%d",
+        users,
+        items,
+        params.training.embedding_dim,
+    )
+    logger.info(
+        "  treino: %d interacoes | validacao: %d interacoes",
+        len(train_frame),
+        len(val_frame),
+    )
     train_tensors = build_labeled_tensors(train_frame, params, items)
     val_tensors = build_labeled_tensors(val_frame, params, items)
     data = to_interaction_data(train_tensors, val_tensors, users, items)
+    logger.info(
+        "  exemplos rotulados: treino=%d (positivos+%d neg/usuario) validacao=%d",
+        len(train_tensors.users),
+        params.training.negative_samples,
+        len(val_tensors.users),
+    )
     trainer = Trainer(build_training_config(params), params.paths.checkpoint_dir)
 
     with mlflow.start_run(run_name="ncf_train"):
@@ -427,6 +464,8 @@ def run(params: PipelineParams) -> None:
         max(history.val_metrics) if history.val_metrics else 0.0,
         len(history.train_losses),
     )
+    logger.info("[STAGE 3/4] TRAIN concluido")
+    logger.info("=" * 70)
 
 
 def main() -> None:

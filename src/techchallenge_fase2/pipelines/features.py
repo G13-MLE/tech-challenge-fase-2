@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 from techchallenge_fase2.pipelines.config import PipelineParams, load_params
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -145,19 +148,40 @@ def build_stats(
 
 def run(params: PipelineParams) -> None:
     """Run the feature engineering stage."""
+    logger.info("=" * 70)
+    logger.info("[STAGE 2/4] FEATURES - engenharia de features e split temporal")
     interactions = load_interactions(params.paths.processed_interactions)
+    logger.info("  interacoes carregadas: %d linhas", len(interactions))
     sessions = add_session_features(interactions, params.features.session_gap_minutes)
     encoded, mappings = add_encoded_ids(sessions)
+    logger.info(
+        "  usuarios codificados: %d | itens codificados: %d",
+        len(mappings["user_ids"]),
+        len(mappings["item_ids"]),
+    )
     splits = split_frame(
         encoded,
         params.features.train_ratio,
         params.features.validation_ratio,
     )
     save_outputs(splits, mappings, params)
+    train, validation, test = splits
+    logger.info(
+        "  split temporal: train=%d (70%%) | validation=%d (15%%) | test=%d (15%%)",
+        len(train),
+        len(validation),
+        len(test),
+    )
+    logger.info("[STAGE 2/4] FEATURES concluido")
+    logger.info("=" * 70)
 
 
 def main() -> None:
     """CLI entry point for the feature engineering stage."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     args = parse_args()
     run(load_params(args.params))
 

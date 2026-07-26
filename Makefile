@@ -16,10 +16,10 @@ export PRE_COMMIT_HOME
 	help \
 	sync setup verify \
 	test lint format \
-	data train pipeline pipeline-force \
+	data train pipeline pipeline-force pipeline-live train-live \
 	dvc-push dvc-pull dvc-status \
 	docker-build docker-build-gpu \
-	mlflow-up mlflow-down \
+	mlflow-up mlflow-down docker-train \
 	baselines ease compare-models \
 	register promote promote-dry-run inference
 
@@ -41,9 +41,11 @@ help:
 	@echo ""
 	@echo "Pipeline DVC:"
 	@echo "  make data             - Baixar dataset RetailRocket via Kaggle"
-	@echo "  make train            - Reexecutar stage de treino (dvc repro train)"
-	@echo "  make pipeline         - Reexecutar pipeline completo (dvc repro)"
-	@echo "  make pipeline-force   - Reexecutar pipeline forçado (dvc repro --force)"
+	@echo "  make train            - Reexecutar stage de treino (dvc repro train -v)"
+	@echo "  make train-live       - Rodar apenas o treino direto (sem DVC) com tqdm"
+	@echo "  make pipeline         - Reexecutar pipeline completo (dvc repro -v)"
+	@echo "  make pipeline-force   - Reexecutar pipeline completo forcado (dvc repro --force)"
+	@echo "  make pipeline-live    - Rodar preprocess->features->train->evaluate direto (tqdm/log live)"
 	@echo "  make dvc-push         - Enviar cache DVC ao remote"
 	@echo "  make dvc-pull         - Restaurar dados do remote DVC"
 	@echo "  make dvc-status       - Verificar status do versionamento DVC"
@@ -61,6 +63,7 @@ help:
 	@echo "  make docker-build-gpu - Build imagem GPU (com CUDA)"
 	@echo "  make mlflow-up        - Iniciar stack MLflow em background (requer .env)"
 	@echo "  make mlflow-down      - Parar containers MLflow"
+	@echo "  make docker-train     - Rodar pipeline DVC dentro do container CPU (perfil train)"
 	@echo ""
 
 # ---------------------------------------------------------------------------
@@ -142,16 +145,28 @@ data:
 	@echo "[OK] dataset disponível em data/raw/."
 
 train:
-	@echo "Reexecutando stage de treino do pipeline DVC..."
-	uv run dvc repro train
+	@echo "Reexecutando stage de treino do pipeline DVC (saída live)..."
+	uv run dvc repro train -v
+
+train-live:
+	@echo "Rodando estagio de TREINO direto (sem DVC) com logs/tqdm live..."
+	uv run python -m techchallenge_fase2.pipelines.training
 
 pipeline:
-	@echo "Reexecutando pipeline DVC completo..."
-	uv run dvc repro
+	@echo "Reexecutando pipeline DVC completo (saída live)..."
+	uv run dvc repro -v
 
 pipeline-force:
-	@echo "Reexecutando pipeline DVC completo (forçado)..."
-	uv run dvc repro --force
+	@echo "Reexecutando pipeline DVC completo (forcado, saída live)..."
+	uv run dvc repro --force -v
+
+pipeline-live:
+	@echo "Rodando pipeline COMPLETO direto (sem DVC) com logs/tqdm live..."
+	uv run python -m techchallenge_fase2.pipelines.preprocess
+	uv run python -m techchallenge_fase2.pipelines.features
+	uv run python -m techchallenge_fase2.pipelines.training
+	uv run python -m techchallenge_fase2.pipelines.evaluation
+	@echo "[OK] pipeline concluido. metricas em metrics/recommendation_metrics.json"
 
 dvc-push:
 	uv run dvc push
@@ -180,3 +195,8 @@ mlflow-down:
 	@echo "[STOP] Parando containers MLflow..."
 	docker compose -f docker/docker-compose.yml --env-file .env down
 	@echo "[OK] Containers parados!"
+
+docker-train:
+	@echo "Docker: Rodando pipeline completo no container CPU (perfil train)..."
+	docker compose -f docker/docker-compose.yml --env-file .env --profile train up --build train
+	@$(PYTHON) -c "from pathlib import Path; values = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if line.startswith('MLFLOW_PORT=')); port = values.get('MLFLOW_PORT', '5000').split('#', 1)[0].strip() or '5000'; print(f'[OK] Pipeline concluido. Veja runs em http://localhost:{port} e metricas em metrics/recommendation_metrics.json')"
