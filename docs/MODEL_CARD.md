@@ -1,8 +1,9 @@
 # Model Card - Tech Challenge Fase 2
 
 **Framework:** *Model Cards for Model Reporting* (Mitchell et al., ACM FAccT 2019)
-**Modelo campeao:** Neural Collaborative Filtering (NCF) - GMF + MLP em PyTorch
-**Ultima atualizacao:** TBD apos `make promote` (versao Production do Model Registry)
+**Modelo:** Neural Collaborative Filtering (NCF) - GMF + MLP em PyTorch
+**Status:** NCF treinado no dataset completo via DVC; comparacao com baselines + declaracao do campeao no Registry pendentes (ver Secao 4.1)
+**Ultima atualizacao:** 26/07/2026 (apos `make pipeline` no dataset RetailRocket completo; baselines + `register/promote` pendentes - ver Secao 4.1)
 
 ---
 
@@ -17,7 +18,7 @@
 | Otimizador         | Adam (lr=0.001)                                                    |
 | Embedding dim      | 64                                                                 |
 | Batch size         | 1024                                                               |
-| Epocas             | 20 (com early stopping, patience=5, min_delta=1e-4)                |
+| Epocas             | 20 max (early stopping em ep 7; best_val_auc=0.8220 em ep 2)        |
 | Negative samples   | 1 por usuario (implicit feedback via rejeicao amostral O(1))       |
 | Seed               | 42                                                                 |
 | Versionamento      | DVC (dataset/params) + MLflow Model Registry (Staging -> Production)|
@@ -77,27 +78,34 @@ Regression) sao avaliados com o mesmo protocolo para comparacao justa.
 
 ### 4.1 Resultados quantitativos
 
-Os numeros abaixo sao preenchidos apos `make pipeline` + `make compare-models`
-+ `make promote`. Veja `models/model_comparison.csv` e
+Os numeros do **NCF** abaixo sao preenchidos apos `make pipeline` (DVC, dataset
+RetailRocket completo). As linhas de **baselines** (Popularity, RecentItems,
+Random, ItemKNN, LogisticRegression, EASE^) serao preenchidas apos
+`make compare-models`. Veja `models/model_comparison.csv` e
 `reports/model_comparison_report.md` para a tabela oficial atualizada a cada
 promocao a Production.
 
-| Modelo            | Precision@10 | Recall@10 | NDCG@10 | MAP@10 | HitRate@10 | harmonic@10 |
-|-------------------|--------------|-----------|---------|--------|------------|-------------|
-| Popularity        | TBD          | TBD       | TBD     | TBD    | TBD        | TBD         |
-| RecentItems       | TBD          | TBD       | TBD     | TBD    | TBD        | TBD         |
-| Random            | TBD          | TBD       | TBD     | TBD    | TBD        | TBD         |
-| ItemKNN           | TBD          | TBD       | TBD     | TBD    | TBD        | TBD         |
-| LogisticRegression| TBD          | TBD       | TBD     | TBD    | TBD        | TBD         |
-| EASE^             | TBD          | TBD       | TBD     | TBD    | TBD        | TBD         |
-| **NCF (campeao)** | **TBD**      | **TBD**   | **TBD** | **TBD**| **TBD**    | **TBD**     |
+| Modelo              | Precision@10 | Recall@10  | NDCG@10    | MAP@10   | HitRate@10 | harmonic@10 |
+|---------------------|--------------|------------|------------|----------|------------|-------------|
+| Popularity          | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| RecentItems         | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| Random              | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| ItemKNN             | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| LogisticRegression  | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| EASE^               | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| **NCF (DVC pipeline)** | **0.0001**   | **0.00009** | **0.00014** | **0.00005** | **0.0010** | **0.00010** |
 
-**Como preencher:** apos `make compare-models`, copie a linha correspondente de
-`reports/model_comparison_report.md` (ou do `print` final do CLI) e substitua
-os `TBD`. Em seguida rode `make promote-dry-run`; se a tolerancia
-`MLFLOW_REGISTRY_STAGING_TOLERANCE` for respeitada, `make promote` registra a
-versao em Production e os numeros tornam-se a referencia oficial do Model
-Card.
+NCF executado via `dvc repro -v` no catalogo completo:
+- Treino: 7 epocas rodadas (early stopping acionado em patience=5 apos best em ep 2)
+- `best_val_auc=0.8220` | `final_train_loss=5.20e-05`
+- Avaliacao Top-K=10 em 1000 usuarios warm-start do conjunto de teste cronologico
+
+**Como preencher os baselines:** apos o merge deste PR, rodar
+`make baselines && make ease && make compare-models` para preencher as linhas
+restantes a partir de `reports/model_comparison_report.md`. Em seguida rodar
+`make register && make promote-dry-run && make promote` para declarar o
+campeao final no Registry; os numeros acima tornam-se a referencia oficial do
+Model Card.
 
 ### 4.2 Usuarios avaliados
 

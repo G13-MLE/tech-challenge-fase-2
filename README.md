@@ -89,12 +89,12 @@ Design patterns aplicados:
 | 2     | Instalação limpa validada                                            | ✔ Concluído   | `make sync && make verify`                                |
 | 3     | Dockerfile multi-stage (builder + runtime)                          | ✔ Concluído   | `docker/Dockerfile` (targets cpu/gpu)                     |
 | 3     | `docker-compose.yml` (MLflow + Postgres + MinIO + serviço treino)  | ✔ Concluído   | `docker/docker-compose.yml`                               |
-| 3     | DVC init, dataset versionado (retailrocket remoto opcional OneDrive)| ✔ Concluído   | `data/raw.dvc`, `.dvc/`, `scripts/setup_environment.py`   |
-| 3     | Pipeline DVC ≥ 3 stages (preprocess/feature_eng/train/evaluate)    | ✔ Concluído   | `dvc.yaml` (4 stages)                                      |
+| 3     | DVC init, dataset versionado (remote OneDrive sincronizado)           | ✔ Validado    | `data/raw.dvc`, `.dvc/config.local`, `scripts/setup_environment.py` |
+| 3     | Pipeline DVC ≥ 3 stages (preprocess/feature_eng/train/evaluate)    | ✔ Reprodutível | `dvc.yaml` (4 stages), `dvc.lock` atualizado c/ dataset real; `dvc pull` testado em clone limpo |
 | 3     | MLflow tracking (params/métricas/artefatos/Model Card)              | ✔ Concluído   | `training/mlflow_tracking.py`                              |
-| 4     | MLP/NCF em PyTorch + early stopping                                 | ✔ Concluído   | `models/ncf.py`, `training/trainer.py`, `training/early_stopping.py` |
-| 4     | Comparação com baselines scikit-learn usando ≥ 4 métricas          | ✔ Concluído   | `pipelines/run_baselines.py`, `run_compare_models.py` (Precision, Recall, NDCG, MAP, HitRate + `harmonic_mean_at_10`) |
-| 4     | Model Registry Staging → Production                                 | ✔ Concluído   | `pipelines/register_model.py`, `promote_model.py`, `inference/load_model.py` |
+| 4     | MLP/NCF em PyTorch + early stopping                                 | ✔ Treinado     | `models/ncf.py`, `training/trainer.py`, `training/early_stopping.py` |
+| 4     | Comparação com baselines scikit-learn usando ≥ 4 métricas          | ⚠ Pendente     | `pipelines/run_baselines.py`, `run_compare_models.py`; NCF avaliado (5 métricas @10), baselines + `make compare-models` pendentes |
+| 4     | Model Registry Staging → Production                                 | ⚠ Pendente     | `pipelines/register_model.py`, `promote_model.py`, `inference/load_model.py`; depende de `make compare-models` declarar o campeao |
 | 4     | Model Card                                                          | ✔ Concluído   | `docs/MODEL_CARD.md` (gerado tambem como JSON no MLflow)  |
 | 4     | README completo                                                     | ✔ Concluído   | este arquivo                                              |
 | 4     | Vídeo STAR de 5 minutos                                             | ⚠ Em progresso | link externo: TBD                                          |
@@ -145,7 +145,14 @@ cd tech-challenge-fase-2
 cp .env.example .env
 #   Edite .env e preencha:
 #     - KAGGLE_USERNAME, KAGGLE_KEY          (para baixar o dataset)
-#     - DVC_ONEDRIVE_REMOTE_URL              (opcional: pasta OneDrive sincronizada)
+#     - DVC_ONEDRIVE_REMOTE_URL              (obrigatorio para dvc push/pull;
+#                                            caminho local sincronizado pelo
+#                                            cliente OneDrive, ex. Linux:
+#                                            /home/<user>/OneDrive/techchallenge-fase2/files/
+#                                            macOS:
+#                                            /Users/<user>/OneDrive - FIAP/techchallenge-fase2/files/
+#                                            Windows:
+#                                            C:/Users/<user>/OneDrive/techchallenge-fase2/files/)
 #     - MLFLOW_TRACKING_URI                  (default http://localhost:5000 ou file:./mlruns)
 
 # 3. Sincronizar dependencias e configurar pre-commit + DVC remote

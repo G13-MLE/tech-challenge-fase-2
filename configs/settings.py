@@ -73,15 +73,22 @@ class Settings(BaseSettings):
     @field_validator("dvc_remote_url")
     @classmethod
     def validate_dvc_remote_url(cls, value: str) -> str:
-        """Valida URI do remote do DVC quando configurada."""
+        """Valida URI do remote do DVC quando configurada.
+
+        Aceita esquemas remotos (s3/gs/ssh), caminhos locais absolutos/relativos
+        usados pelo OneDrive sync (sem esquema) e URIs file://.
+        """
         stripped_value = value.strip()
         if not stripped_value:
             return ""
 
         parsed_uri = urlparse(stripped_value)
-        allowed_schemes = {"s3", "gs", "ssh"}
+        allowed_schemes = {"s3", "gs", "ssh", "file", ""}
         if parsed_uri.scheme not in allowed_schemes:
-            msg = "DVC_REMOTE_URL deve usar s3://, gs:// ou ssh://"
+            msg = (
+                "DVC_REMOTE_URL deve usar s3://, gs://, ssh://, "
+                "file:// ou caminho local"
+            )
             raise ValueError(msg)
         return stripped_value
 
