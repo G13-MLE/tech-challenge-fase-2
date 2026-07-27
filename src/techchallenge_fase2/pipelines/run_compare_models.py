@@ -12,11 +12,14 @@ Orquestra o fluxo completo de comparacao:
 Uso:
     $ uv run python -m techchallenge_fase2.pipelines.run_compare_models
     $ uv run python -m techchallenge_fase2.pipelines.run_compare_models --skip-ease
+    $ uv run python -m techchallenge_fase2.pipelines.run_compare_models \\
+        --max-users 1000 --skip-models item_knn,logistic_regression
 """
 
 from __future__ import annotations
 
 import argparse
+import gc
 import logging
 import sys
 import time
@@ -111,6 +114,28 @@ def parse_args() -> argparse.Namespace:
         help="Pular treinamento do EASE^ (apenas baselines simples)",
     )
     parser.add_argument(
+        "--skip-models",
+        default="",
+        help=(
+            "Lista separada por virgulas de modelos a pular "
+            "(ex.: item_knn,logistic_regression,neural_ncf). "
+            "Pratico para datasets grandes em que alguns modelos nao escalam."
+        ),
+    )
+    parser.add_argument(
+        "--max-users",
+        type=int,
+        default=1000,
+        help=(
+            "Numero maximo de usuarios do conjunto de teste a avaliar "
+            "(default: 1000). Em datasets reais (ex.: RetailRocket 1.4M "
+            "usuarios x 235k itens), avaliar todos os usuarios warm-start "
+            "do teste e proibitivo em memoria/tempo; esta amostra "
+            "deterministica e suficiente para comparacao e mantem baixo "
+            "os requisitos de RAM."
+        ),
+    )
+    parser.add_argument(
         "--experiment-name",
         default=None,
         help="Nome do experimento MLflow (override)",
@@ -174,6 +199,8 @@ def evaluate_all_models(  # noqa: PLR0913
     ground_truth: dict[str, set[str]],
     k_values: tuple[int, ...] = K_VALUES,
     skip_ease: bool = False,
+    skip_models: str = "",
+    max_users: int = 1000,
     random_seed: int = 42,
 ) -> tuple[list[ModelResult], dict[str, Any]]:
     """Treina e avalia todos os modelos para comparacao.
@@ -183,6 +210,9 @@ def evaluate_all_models(  # noqa: PLR0913
         ground_truth: Itens relevantes por usuario para avaliacao.
         k_values: Valores de K para computar metricas.
         skip_ease: Se True, pula o EASE^ na avaliacao.
+        skip_models: Lista separada por virgulas de modelos a pular.
+        max_users: Limite deterministico de usuarios avaliados para conter
+            custo de inferencia em datasets reais; 0 desativa o limite.
         random_seed: Seed para reprodutibilidade.
 
     Returns:
@@ -197,18 +227,51 @@ def evaluate_all_models(  # noqa: PLR0913
     if skip_ease and ModelType.EASE_TORCH.value in model_names:
         model_names.remove(ModelType.EASE_TORCH.value)
 
+    skipped = {name.strip() for name in skip_models.split(",") if name.strip()}
+    if skipped:
+        before = len(model_names)
+        model_names = [m for m in model_names if m not in skipped]
+        logger.info(
+            "Pulando %d modelo(s) por --skip-models: %s",
+            before - len(model_names),
+            ", ".join(sorted(skipped)),
+        )
+
+    # Subamostra deterministica o pool de usuarios para avaliacao.
+    # Em datasets reais (1.4M usuarios x 235k itens) avaliar todos os
+    # usuarios warm-start do teste e proibitivo; max_users mantem baixo
+    # o custo de inferencia sem comprometer a comparacao entre modelos.
+    eval_users = list(ground_truth.keys())
+    if max_users > 0 and len(eval_users) > max_users:
+        eval_users_sorted = sorted(eval_users)
+        eval_users = eval_users_sorted[:max_users]
+        logger.info(
+            "Avaliacao limitada a %d/%d usuarios do ground_truth (--max-users)",
+            len(eval_users),
+            len(ground_truth),
+        )
+    eval_ground_truth = {user: ground_truth[user] for user in eval_users}
+
     model_results: list[ModelResult] = []
     trained_models: dict[str, Any] = {}
 
     for model_name in model_names:
+        logger.info("[compare] treinando modelo %s ...", model_name)
         config = build_model_config(model_name, k_values)
         model = factory.create(config)
         try:
             train_time = time_fit(model, train_interactions)
-            recommended, infer_time = time_recommend(model, ground_truth, max(k_values))
-            metrics = compute_recommender_metrics(ground_truth, recommended, k_values)
+            recommended, infer_time = time_recommend(
+                model, eval_ground_truth, max(k_values)
+            )
+            metrics = compute_recommender_metrics(
+                eval_ground_truth, recommended, k_values
+            )
         except Exception as exc:
             logger.warning("Modelo %s falhou (%s); pulando.", model_name, exc)
+            # Evita reter estado grande de um modelo falho entre iteracoes.
+            del model
+            gc.collect()
             continue
         trained_models[model_name] = model
 
@@ -233,6 +296,10 @@ def evaluate_all_models(  # noqa: PLR0913
             train_time,
             infer_time,
         )
+        # Entre modelos pesados forca liberacao de memoria (matrizes densas
+        # do ItemKNN/EASE^/LogisticRegression ocupam RAM proporcional ao
+        # catalogo). Evita burst em pipelines longos no dataset completo.
+        gc.collect()
 
     return model_results, trained_models
 
@@ -292,6 +359,8 @@ def run_compare_pipeline(  # noqa: PLR0913
     skip_ease: bool = False,
     experiment_name: str | None = None,
     k_values: tuple[int, ...] = K_VALUES,
+    skip_models: str = "",
+    max_users: int = 1000,
 ) -> pd.DataFrame:
     """Executa pipeline completa de comparacao de modelos com MLflow.
 
@@ -302,6 +371,8 @@ def run_compare_pipeline(  # noqa: PLR0913
         skip_ease: Se True, pula o EASE^.
         experiment_name: Nome do experimento MLflow.
         k_values: Valores de K para as metricas.
+        skip_models: Lista separada por virgulas de modelos a pular.
+        max_users: Limite de usuarios do ground_truth a avaliar.
 
     Returns:
         DataFrame comparativo com metricas por modelo.
@@ -338,8 +409,23 @@ def run_compare_pipeline(  # noqa: PLR0913
 
     # Treina e avalia todos os modelos
     model_results, trained_models = evaluate_all_models(
-        train_interactions, ground_truth, k_values, skip_ease, random_seed
+        train_interactions,
+        ground_truth,
+        k_values,
+        skip_ease,
+        skip_models,
+        max_users,
+        random_seed,
     )
+    # Numero de usuarios efetivamente avaliados (apos --max-users).
+    evaluated_users_count = (
+        len(model_results) and model_results[0].num_users_evaluated or 0
+    )
+    if evaluated_users_count:
+        logger.info(
+            "Comparacao avaliou efetivamente %d usuarios por modelo",
+            evaluated_users_count,
+        )
 
     # Constroi resumo dos dados de entrada
     input_data_summary = build_input_data_summary(
@@ -371,7 +457,8 @@ def run_compare_pipeline(  # noqa: PLR0913
                     "test_ratio": test_ratio,
                     "dataset_version": dataset_version,
                     "num_train_interactions": len(train_interactions),
-                    "num_evaluated_users": len(ground_truth),
+                    "num_evaluated_users": evaluated_users_count,
+                    "max_users": max_users,
                     "k_values": str(k_values),
                     "architecture": type(model).__name__,
                     "model_role": result.model_role,
@@ -428,7 +515,7 @@ def run_compare_pipeline(  # noqa: PLR0913
                 result.model_name,
                 random_seed=random_seed,
                 dataset_version=dataset_version,
-                num_evaluated_users=len(ground_truth),
+                num_evaluated_users=evaluated_users_count,
                 **metrics,
             )
             mlflow.log_dict(card, "model_card.json")
@@ -482,7 +569,7 @@ def run_compare_pipeline(  # noqa: PLR0913
         num_users=int(interactions_df["user_id"].nunique()),
         num_items=int(interactions_df["item_id"].nunique()),
         num_interactions=len(interactions_df),
-        num_evaluated_users=len(ground_truth),
+        num_evaluated_users=evaluated_users_count,
         dataset_name="RetailRocket E-Commerce",
         split_strategy="chronological_3way",
         test_ratio=test_ratio,
@@ -529,6 +616,8 @@ def main() -> int:
             random_seed=args.random_seed,
             skip_ease=args.skip_ease,
             experiment_name=args.experiment_name,
+            skip_models=args.skip_models,
+            max_users=args.max_users,
         )
         print("\nResultados comparativos:")
         print(comparison_df.to_string(index=False))
