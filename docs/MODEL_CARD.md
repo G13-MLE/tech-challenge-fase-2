@@ -1,9 +1,10 @@
 # Model Card - Tech Challenge Fase 2
 
 **Framework:** *Model Cards for Model Reporting* (Mitchell et al., ACM FAccT 2019)
-**Modelo:** Neural Collaborative Filtering (NCF) - GMF + MLP em PyTorch
-**Status:** NCF treinado via DVC + baselines avaliados via `make compare-models`; ItemKNN/LogisticRegression/EASE^/NCF nao avaliados no compare-models (OOM em 16GB para catalogo 235k itens); `register/promote` pendentes (ver Secao 4.1)
-**Ultima atualizacao:** 26/07/2026 (apos `make pipeline` + `make compare-models` no dataset RetailRocket completo)
+**Modelo campeao:** EASE^ (Embarrassingly Shallow Auto-Encoders) - campeao do `make compare-models` (H-Mean@10=0.0325)
+**Modelo neural:** Neural Collaborative Filtering (NCF) - GMF + MLP em PyTorch (treinado via DVC, H-Mean@10=0.0087)
+**Status:** Catalogo filtrado (10k itens, usuarios>=5 interacoes); 6 modelos avaliados via `make compare-models`; EASE^ campeao; `make register && make promote` pendentes (ver Secao 4.1)
+**Ultima atualizacao:** 27/07/2026 (apos `make pipeline-live` + `make compare-models` no dataset RetailRocket filtrado)
 
 ---
 
@@ -18,8 +19,8 @@
 | Otimizador         | Adam (lr=0.001)                                                    |
 | Embedding dim      | 64                                                                 |
 | Batch size         | 1024                                                               |
-| Epocas             | 20 max (early stopping em ep 7; best_val_auc=0.8220 em ep 2)        |
-| Negative samples   | 1 por usuario (implicit feedback via rejeicao amostral O(1))       |
+| Epocas             | 20 max (early stopping em ep 8; best_val_auc=0.7250 em ep 3)        |
+| Negative samples   | 4 por usuario (implicit feedback via rejeicao amostral O(1))       |
 | Seed               | 42                                                                 |
 | Versionamento      | DVC (dataset/params) + MLflow Model Registry (Staging -> Production)|
 | Quem treinou       | G13-MLE Grupo 13                                                   |
@@ -87,42 +88,34 @@ promocao a Production.
 
 | Modelo              | Precision@10 | Recall@10  | NDCG@10    | MAP@10   | HitRate@10 | harmonic@10 |
 |---------------------|--------------|------------|------------|----------|------------|-------------|
-| Popularity          | 0.0001       | 0.0010     | 0.0003     | 0.0001  | 0.0010     | 0.0002      |
-| RecentItems         | 0.0000       | 0.0000     | 0.0000     | 0.0000  | 0.0000     | 0.0000      |
-| Random              | 0.0000       | 0.0000     | 0.0000     | 0.0000  | 0.0000     | 0.0000      |
-| ItemKNN             | n/a*         | n/a*       | n/a*       | n/a*    | n/a*       | n/a*        |
-| LogisticRegression  | n/a*         | n/a*       | n/a*       | n/a*    | n/a*       | n/a*        |
-| EASE^               | n/a*         | n/a*       | n/a*       | n/a*    | n/a*       | n/a*        |
-| **NCF (DVC pipeline)** | **0.0001**   | **0.00009** | **0.00014** | **0.00005** | **0.0010** | **0.00010** |
+| Popularity          | 0.0016       | 0.0064     | 0.0030     | 0.0012  | 0.0140     | 0.0021      |
+| RecentItems         | 0.0006       | 0.0036     | 0.0017     | 0.0009  | 0.0060     | 0.0011      |
+| Random              | 0.0001       | 0.0005     | 0.0002     | 0.0001  | 0.0010     | 0.0001      |
+| ItemKNN             | 0.0097       | 0.0479     | 0.0297     | 0.0193  | 0.0780     | 0.0191      |
+| LogisticRegression  | 0.0022       | 0.0088     | 0.0042     | 0.0017  | 0.0210     | 0.0029      |
+| **EASE^ (campeao)** | **0.0166**   | **0.0737** | **0.0501** | **0.0341** | **0.1310** | **0.0325**   |
+| NCF (DVC pipeline)  | 0.0027       | 0.0107     | 0.0069     | 0.0037  | 0.0250     | 0.0087      |
 
-\* ItemKNN, LogisticRegression e EASE^ constroem matrizes densas 235k x 235k
-(~220 GB em float32) e estouraram a memoria (OOM kill em 16 GB RAM). Para
-avalia-los seria necessario subamostrar o catalogo (e.g. top-10k itens mais
-populares) ou rodar em maquina com >=256 GB RAM. O codigo e os
-hiperparametros estao implementados (`src/.../sklearn_baselines.py`,
-`ease_torch.py`) e passam em datasets menores; o bloqueio e puramente de
-infraestrutura, nao de implementacao.
+Catalogo filtrado a 10k itens mais populares + usuarios com >=5 interacoes
+(decisao de design documentada: ver Secao 5). Avaliacao em 1000 usuarios
+warm-start do conjunto teste cronologico, top_k=10.
 
 NCF executado via `dvc repro -v` no catalogo completo:
 - Treino: 7 epocas rodadas (early stopping acionado em patience=5 apos best em ep 2)
-- `best_val_auc=0.8220` | `final_train_loss=5.20e-05`
+- `best_val_auc=0.7250` | `final_train_loss=0.0142`
 - Avaliacao Top-K=10 em 1000 usuarios warm-start do conjunto de teste cronologico
 
-**Observacao sobre os modelos `n/a*`:** ItemKNN, LogisticRegression e EASE^
-constroem matrizes densas 235k x 235k (~220 GB em float32) e estouraram a
-memoria (OOM kill em 16 GB RAM) durante o `make compare-models`. O codigo e
-os hiperparametros estao implementados em `src/techchallenge_fase2/models/
-sklearn_baselines.py` e `ease_torch.py` e passam em datasets menores; o
-bloqueio e puramente de infraestrutura, nao de implementacao. Para
-avalia-los seria necessario subamostrar o catalogo (e.g. top-10k itens mais
-populares) ou rodar em maquina com >=256 GB RAM.
+**Campeao:** `ease_torch` (H-Mean@10=0.0325), com vantagem de +0.0134 sobre
+o `item_knn` (H-Mean@10=0.0191). Os numeros acima foram coletados pelo
+`make compare-models` no catalogo filtrado (10k itens, usuarios>=5
+interacoes), 3 runs no experimento `tech-challenge-comparison` do MLflow.
+Veja `models/model_comparison.csv` e `reports/model_comparison_report.md`.
 
 **Proximos passos:** apos o merge deste PR, rodar `make register &&
-make promote-dry-run && make promote` para declarar o campeao (`popularity`,
-vencedor do `harmonic_mean_at_10` no `make compare-models`) no MLflow Model
-Registry em Production. O NCF treinado pelo DVC pipeline ja tem checkpoint
-em `models/torch_embedding_recommender.pt` e pode ser registrado
-separadamente se desejado.
+make promote-dry-run && make promote` para declarar o `ease_torch` campeao
+no MLflow Model Registry em Production. O NCF treinado pelo DVC pipeline ja
+tem checkpoint em `models/torch_embedding_recommender.pt` e pode ser
+registrado separadamente se desejado.
 
 ### 4.2 Usuarios avaliados
 

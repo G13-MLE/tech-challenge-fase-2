@@ -115,7 +115,7 @@ ease:
 # Config default do compare-models: heartbeat rapido em dataset real.
 # Pula ItemKNN/LogisticRegression/NCF (nao escalam p/ 235k itens em CPU) e
 # limita a 1000 usuarios avaliados. Deixa Popularity/RecentItems/Random/EASE^.
-COMPARE_SKIP_MODELS ?= item_knn,logistic_regression,neural_ncf,torch_embedding
+COMPARE_SKIP_MODELS ?= neural_ncf,torch_embedding
 COMPARE_MAX_USERS ?= 1000
 
 compare-models:

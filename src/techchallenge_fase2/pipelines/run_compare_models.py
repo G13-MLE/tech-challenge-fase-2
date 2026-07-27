@@ -93,8 +93,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-dir",
-        default="data/raw",
-        help="Diretorio com dados brutos (default: data/raw)",
+        default="data/processed",
+        help=(
+            "Diretorio de dados. Default 'data/processed' usa o "
+            "interactions.parquet ja filtrado pelo stage preprocess "
+            "(top-10000 itens, >=5 interacoes/usuario). Use 'data/raw' "
+            "para o dataset bruto (nao recomendado - metricas ~0)."
+        ),
     )
     parser.add_argument(
         "--test-ratio",
@@ -353,7 +358,7 @@ def build_comparison_summary(
 
 
 def run_compare_pipeline(  # noqa: PLR0913
-    data_dir: str | Path = "data/raw",
+    data_dir: str | Path = "data/processed",
     test_ratio: float = 0.15,
     random_seed: int = 42,
     skip_ease: bool = False,
@@ -365,7 +370,7 @@ def run_compare_pipeline(  # noqa: PLR0913
     """Executa pipeline completa de comparacao de modelos com MLflow.
 
     Args:
-        data_dir: Diretorio com dados brutos.
+        data_dir: Diretorio com dados (default 'data/processed' ja filtrado).
         test_ratio: Fracao de interacoes para teste.
         random_seed: Seed para reprodutibilidade.
         skip_ease: Se True, pula o EASE^.

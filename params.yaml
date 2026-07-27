@@ -10,11 +10,18 @@ paths:
   checkpoint_dir: models/checkpoints
   metrics: metrics/recommendation_metrics.json
 
-# Pipeline configurado para o dataset RetailRocket completo (>=1.4M interacoes).
+# Pipeline configurado para o dataset RetailRocket filtrado aos top-10000
+# itens mais populares e usuarios com >=5 interacoes. Decisao de design
+# documentada (literatura de recsys para datasets esparsos): reduz o
+# catalogo de 235k para ~10k itens (tratavel em 16GB RAM, viabiliza
+# ItemKNN/LogReg/EASE^) e foca em usuarios com historico suficiente
+# para personalizacao. Metricas esperadas: hit_rate@10 ~ 0.05-0.20.
 # sample_size = 0 desativa a amostragem (usar o dataset real).
 preprocess:
   sample_size: 0
   random_seed: 42
+  max_items: 10000
+  min_interactions_per_user: 5
 
 features:
   train_ratio: 0.70
@@ -25,14 +32,15 @@ features:
     addtocart: 3.0
     transaction: 5.0
 
-# Hiperparametros ajustados para treino real do NCF no catalogo completo.
-# epochs=20 com patience=5+early stopping tipicamente encerra entre 7-15 epocas.
+# Hiperparametros ajustados para treino do NCF no catalogo filtrado (10k itens).
+# epoch=20 com patience=5 + early stopping; neg_samples=4 aumenta o sinal
+# negativo por usuario (catalogo 10k torna o ratio viavel).
 training:
   batch_size: 1024
   epochs: 20
   embedding_dim: 64
   learning_rate: 0.001
-  negative_samples: 1
+  negative_samples: 4
   random_seed: 42
   patience: 5
   min_delta: 0.0001
