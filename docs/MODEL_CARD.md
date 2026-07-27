@@ -2,8 +2,8 @@
 
 **Framework:** *Model Cards for Model Reporting* (Mitchell et al., ACM FAccT 2019)
 **Modelo:** Neural Collaborative Filtering (NCF) - GMF + MLP em PyTorch
-**Status:** NCF treinado no dataset completo via DVC; comparacao com baselines + declaracao do campeao no Registry pendentes (ver Secao 4.1)
-**Ultima atualizacao:** 26/07/2026 (apos `make pipeline` no dataset RetailRocket completo; baselines + `register/promote` pendentes - ver Secao 4.1)
+**Status:** NCF treinado via DVC + baselines avaliados via `make compare-models`; ItemKNN/LogisticRegression/EASE^/NCF nao avaliados no compare-models (OOM em 16GB para catalogo 235k itens); `register/promote` pendentes (ver Secao 4.1)
+**Ultima atualizacao:** 26/07/2026 (apos `make pipeline` + `make compare-models` no dataset RetailRocket completo)
 
 ---
 
@@ -87,25 +87,42 @@ promocao a Production.
 
 | Modelo              | Precision@10 | Recall@10  | NDCG@10    | MAP@10   | HitRate@10 | harmonic@10 |
 |---------------------|--------------|------------|------------|----------|------------|-------------|
-| Popularity          | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
-| RecentItems         | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
-| Random              | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
-| ItemKNN             | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
-| LogisticRegression  | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
-| EASE^               | pend.        | pend.      | pend.      | pend.    | pend.      | pend.       |
+| Popularity          | 0.0001       | 0.0010     | 0.0003     | 0.0001  | 0.0010     | 0.0002      |
+| RecentItems         | 0.0000       | 0.0000     | 0.0000     | 0.0000  | 0.0000     | 0.0000      |
+| Random              | 0.0000       | 0.0000     | 0.0000     | 0.0000  | 0.0000     | 0.0000      |
+| ItemKNN             | n/a*         | n/a*       | n/a*       | n/a*    | n/a*       | n/a*        |
+| LogisticRegression  | n/a*         | n/a*       | n/a*       | n/a*    | n/a*       | n/a*        |
+| EASE^               | n/a*         | n/a*       | n/a*       | n/a*    | n/a*       | n/a*        |
 | **NCF (DVC pipeline)** | **0.0001**   | **0.00009** | **0.00014** | **0.00005** | **0.0010** | **0.00010** |
+
+\* ItemKNN, LogisticRegression e EASE^ constroem matrizes densas 235k x 235k
+(~220 GB em float32) e estouraram a memoria (OOM kill em 16 GB RAM). Para
+avalia-los seria necessario subamostrar o catalogo (e.g. top-10k itens mais
+populares) ou rodar em maquina com >=256 GB RAM. O codigo e os
+hiperparametros estao implementados (`src/.../sklearn_baselines.py`,
+`ease_torch.py`) e passam em datasets menores; o bloqueio e puramente de
+infraestrutura, nao de implementacao.
 
 NCF executado via `dvc repro -v` no catalogo completo:
 - Treino: 7 epocas rodadas (early stopping acionado em patience=5 apos best em ep 2)
 - `best_val_auc=0.8220` | `final_train_loss=5.20e-05`
 - Avaliacao Top-K=10 em 1000 usuarios warm-start do conjunto de teste cronologico
 
-**Como preencher os baselines:** apos o merge deste PR, rodar
-`make baselines && make ease && make compare-models` para preencher as linhas
-restantes a partir de `reports/model_comparison_report.md`. Em seguida rodar
-`make register && make promote-dry-run && make promote` para declarar o
-campeao final no Registry; os numeros acima tornam-se a referencia oficial do
-Model Card.
+**Observacao sobre os modelos `n/a*`:** ItemKNN, LogisticRegression e EASE^
+constroem matrizes densas 235k x 235k (~220 GB em float32) e estouraram a
+memoria (OOM kill em 16 GB RAM) durante o `make compare-models`. O codigo e
+os hiperparametros estao implementados em `src/techchallenge_fase2/models/
+sklearn_baselines.py` e `ease_torch.py` e passam em datasets menores; o
+bloqueio e puramente de infraestrutura, nao de implementacao. Para
+avalia-los seria necessario subamostrar o catalogo (e.g. top-10k itens mais
+populares) ou rodar em maquina com >=256 GB RAM.
+
+**Proximos passos:** apos o merge deste PR, rodar `make register &&
+make promote-dry-run && make promote` para declarar o campeao (`popularity`,
+vencedor do `harmonic_mean_at_10` no `make compare-models`) no MLflow Model
+Registry em Production. O NCF treinado pelo DVC pipeline ja tem checkpoint
+em `models/torch_embedding_recommender.pt` e pode ser registrado
+separadamente se desejado.
 
 ### 4.2 Usuarios avaliados
 

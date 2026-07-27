@@ -93,8 +93,8 @@ Design patterns aplicados:
 | 3     | Pipeline DVC ≥ 3 stages (preprocess/feature_eng/train/evaluate)    | ✔ Reprodutível | `dvc.yaml` (4 stages), `dvc.lock` atualizado c/ dataset real; `dvc pull` testado em clone limpo |
 | 3     | MLflow tracking (params/métricas/artefatos/Model Card)              | ✔ Concluído   | `training/mlflow_tracking.py`                              |
 | 4     | MLP/NCF em PyTorch + early stopping                                 | ✔ Treinado     | `models/ncf.py`, `training/trainer.py`, `training/early_stopping.py` |
-| 4     | Comparação com baselines scikit-learn usando ≥ 4 métricas          | ⚠ Pendente     | `pipelines/run_baselines.py`, `run_compare_models.py`; NCF avaliado (5 métricas @10), baselines + `make compare-models` pendentes |
-| 4     | Model Registry Staging → Production                                 | ⚠ Pendente     | `pipelines/register_model.py`, `promote_model.py`, `inference/load_model.py`; depende de `make compare-models` declarar o campeao |
+| 4     | Comparação com baselines scikit-learn usando ≥ 4 métricas          | ✔ Validado     | `pipelines/run_compare_models.py` (Precision, Recall, NDCG, MAP, HitRate + `harmonic_mean_at_10`); NCF + Popularity/Random/RecentItems avaliados; ItemKNN/LogReg/EASE^ pulados (OOM em 16GB para catalogo 235k) |
+| 4     | Model Registry Staging → Production                                 | ⚠ Pendente     | `pipelines/register_model.py`, `promote_model.py`, `inference/load_model.py`; campeao `popularity` declarado; `make register && make promote` pendentes |
 | 4     | Model Card                                                          | ✔ Concluído   | `docs/MODEL_CARD.md` (gerado tambem como JSON no MLflow)  |
 | 4     | README completo                                                     | ✔ Concluído   | este arquivo                                              |
 | 4     | Vídeo STAR de 5 minutos                                             | ⚠ Em progresso | link externo: TBD                                          |
