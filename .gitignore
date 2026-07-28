@@ -74,3 +74,5 @@ Tech Challenge Fase 02.pdf
 
 # Playwright
 .playwright-mcp
+logs/
+/logs/

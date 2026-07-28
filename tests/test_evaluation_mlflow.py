@@ -39,7 +39,9 @@ def build_params(tmp_path: Path) -> PipelineParams:
             checkpoint_dir=tmp_path / "checkpoints",
             metrics=tmp_path / "metrics.json",
         ),
-        preprocess=PreprocessParams(sample_size=100, random_seed=42),
+        preprocess=PreprocessParams(
+            sample_size=100, random_seed=42, max_items=0, min_interactions_per_user=0
+        ),
         features=FeatureParams(
             train_ratio=0.7,
             validation_ratio=0.15,

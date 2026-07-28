@@ -27,10 +27,19 @@ class PathParams:
 
 @dataclass(frozen=True, slots=True)
 class PreprocessParams:
-    """Preprocessing behavior."""
+    """Preprocessing behavior.
+
+    A filtragem do catalogo e dos usuarios e uma decisao de design documentada
+    da literatura de sistemas de recomendacao para tornar o problema tratavel
+    em datasets esparsos (RetailRocket tem ~2 interacoes/usuario em catalogo de
+    235k itens): mantemos apenas os top `max_items` itens mais populares e
+    usuarios com pelo menos `min_interactions_per_user` interacoes.
+    """
 
     sample_size: int
     random_seed: int
+    max_items: int
+    min_interactions_per_user: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +120,8 @@ def build_preprocess(raw_params: dict[str, int]) -> PreprocessParams:
     return PreprocessParams(
         sample_size=int(raw_params["sample_size"]),
         random_seed=int(raw_params["random_seed"]),
+        max_items=int(raw_params.get("max_items", 0)),
+        min_interactions_per_user=int(raw_params.get("min_interactions_per_user", 0)),
     )
 
 

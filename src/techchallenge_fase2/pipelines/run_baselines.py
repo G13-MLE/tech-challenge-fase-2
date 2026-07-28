@@ -154,28 +154,46 @@ def build_input_data_summary(
 
 
 def load_interactions(data_dir: str | Path) -> pd.DataFrame:
-    """Carrega interações do dataset RetailRocket.
+    """Carrega interacoes do dataset RetailRocket ou da saida preprocessada.
 
-    Procura por arquivos CSV com colunas de interação user-item
-    no diretório data/raw/.
+    Aceita CSV (data/raw/) ou Parquet (data/processed/, ja filtrado pelo
+    stage preprocess). Em data/processed procura primeiro por
+    `interactions.parquet` para reusar o catalogo filtrado (top-N itens +
+    usuarios ativos) e manter consistencia com o pipeline DVC.
 
     Args:
-        data_dir: Caminho para o diretório de dados brutos.
+        data_dir: Caminho para o diretorio de dados (raw ou processed).
 
     Returns:
-        DataFrame com colunas mínimas de interação.
+        DataFrame com colunas minimimas de interacao.
 
     Raises:
-        FileNotFoundError: Se nenhum arquivo de interações for encontrado.
+        FileNotFoundError: Se nenhum arquivo de interacoes for encontrado.
     """
     data_path = Path(data_dir)
-    csv_files = list(data_path.glob("*.csv"))
+    parquet_files = list(data_path.glob("*.parquet"))
+    interactions_file = None
+    for candidate in parquet_files:
+        if candidate.stem == "interactions":
+            interactions_file = candidate
+            break
+    if interactions_file is None and parquet_files:
+        interactions_file = parquet_files[0]
+    if interactions_file is not None:
+        df = pd.read_parquet(interactions_file)
+        logger.info(
+            "Carregado %s com %d linhas e %d colunas",
+            interactions_file,
+            len(df),
+            len(df.columns),
+        )
+        return _normalize_interactions_columns(df)
 
+    csv_files = list(data_path.glob("*.csv"))
     if not csv_files:
-        msg = f"Nenhum arquivo CSV encontrado em {data_path}"
+        msg = f"Nenhum arquivo CSV ou Parquet encontrado em {data_path}"
         raise FileNotFoundError(msg)
 
-    # Prioriza arquivos de eventos (interacoes user-item) sobre outros CSVs
     event_files = [f for f in csv_files if "event" in f.name.lower()]
     chosen_file = event_files[0] if event_files else csv_files[0]
     df = pd.read_csv(chosen_file)
@@ -185,9 +203,16 @@ def load_interactions(data_dir: str | Path) -> pd.DataFrame:
         len(df),
         len(df.columns),
     )
+    return _normalize_interactions_columns(df)
 
-    # Identifica colunas de interação
-    # RetailRocket: visitorid, itemid, event
+
+def _normalize_interactions_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normaliza nomes de colunas de user/item/timestamp para o pipeline.
+
+    Aceita tanto o esquema bruto do RetailRocket (`visitorid`/`itemid`/
+    `timestamp`) quanto o esquema ja preprocessado (`user_id`/`item_id`/
+    `event_time`/`event_weight`).
+    """
     possible_user_cols = ["visitorid", "user_id", "userId", "user"]
     possible_item_cols = ["itemid", "item_id", "itemId", "item"]
 
@@ -205,24 +230,28 @@ def load_interactions(data_dir: str | Path) -> pd.DataFrame:
             break
 
     if user_col is None or item_col is None:
-        # Fallback: usa as duas primeiras colunas como user e item
         if len(df.columns) >= 2:
             user_col = df.columns[0]
             item_col = df.columns[1]
             logger.info(
-                "Colunas não identificadas, usando %s como user e %s como item",
+                "Colunas nao identificadas, usando %s como user e %s como item",
                 user_col,
                 item_col,
             )
         else:
             msg = (
-                f"Não foi possível identificar colunas de "
-                f"interação em {df.columns.tolist()}"
+                f"Nao foi possivel identificar colunas de "
+                f"interacao em {df.columns.tolist()}"
             )
             raise ValueError(msg)
 
-    # Preserva timestamp para split cronologico se disponivel
-    possible_time_cols = ["timestamp", "event_time", "time", "datetime", "ts"]
+    possible_time_cols = [
+        "timestamp",
+        "event_time",
+        "time",
+        "datetime",
+        "ts",
+    ]
     time_col = None
     for col in possible_time_cols:
         if col in df.columns:

@@ -7,6 +7,7 @@ stopping e o salvamento automatico de checkpoints do melhor modelo.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,11 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover - tqdm e dependencia obrigatoria
+    tqdm = None  # type: ignore[assignment]
+
 from techchallenge_fase2.data import InteractionData
 from techchallenge_fase2.models.ncf import NeuralCollaborativeFiltering
 from techchallenge_fase2.training.checkpoint import (
@@ -22,6 +28,12 @@ from techchallenge_fase2.training.checkpoint import (
     save_checkpoint,
 )
 from techchallenge_fase2.training.early_stopping import EarlyStopping
+
+logger = logging.getLogger(__name__)
+
+# Mensagem exibida quando tqdm nao esta disponivel (apenas em ambientes
+# minimalistas); no projeto real tqdm e dependencia obrigatoria.
+TQDM_UNAVAILABLE = "tqdm indisponivel; rodando sem barras de progresso."
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,11 +97,17 @@ def move_batch(batch, device):
     return tuple(tensor.to(device) for tensor in batch)
 
 
-def run_epoch(model, loader, optimizer, criterion, device):
+def run_epoch(
+    model, loader, optimizer, criterion, device, epoch: int = 0, total_epochs: int = 0
+):
     """Executa uma epoca de treino e retorna a perda media."""
     model.train()
     total_loss = 0.0
-    for users, items, labels in loader:
+    iterator = loader
+    if tqdm is not None:
+        desc = f"  ep {epoch:>2}/{total_epochs}" if epoch else "  train"
+        iterator = tqdm(loader, desc=desc, unit="batch", leave=False)
+    for users, items, labels in iterator:
         users, items, labels = move_batch((users, items, labels), device)
         optimizer.zero_grad()
         loss = criterion(model(users, items), labels)
@@ -99,13 +117,17 @@ def run_epoch(model, loader, optimizer, criterion, device):
     return total_loss / len(loader.dataset)
 
 
-def evaluate_auc(model, loader, device) -> float:
+def evaluate_auc(model, loader, device, epoch: int = 0, total_epochs: int = 0) -> float:
     """Calcula o AUC do modelo no conjunto de validacao."""
     model.eval()
     all_probs: list[torch.Tensor] = []
     all_labels: list[torch.Tensor] = []
+    iterator = loader
+    if tqdm is not None:
+        desc = f"  ep {epoch:>2}/{total_epochs} val" if epoch else "  val"
+        iterator = tqdm(loader, desc=desc, unit="batch", leave=False)
     with torch.no_grad():
-        for users, items, labels in loader:
+        for users, items, labels in iterator:
             users, items, labels = move_batch((users, items, labels), device)
             all_probs.append(torch.sigmoid(model(users, items)))
             all_labels.append(labels)
@@ -153,18 +175,54 @@ class Trainer:
         train_losses: list[float] = []
         val_metrics: list[float] = []
         stopped_epoch = -1
-        for epoch in range(1, self.config.epochs + 1):
-            loss = run_epoch(model, train_loader, optimizer, criterion, self.device)
-            val_auc = evaluate_auc(model, val_loader, self.device)
+        total = self.config.epochs
+        logger.info(
+            "Iniciando treino NCF: epochs=%d batch_size=%d "
+            "train_batches=%d val_batches=%d device=%s",
+            total,
+            self.config.batch_size,
+            len(train_loader),
+            len(val_loader),
+            self.device,
+        )
+        epochs_range = range(1, total + 1)
+        if tqdm is not None:
+            epochs_range = tqdm(epochs_range, desc="Epochs", unit="ep")
+        else:
+            logger.warning(TQDM_UNAVAILABLE)
+        for epoch in epochs_range:
+            loss = run_epoch(
+                model, train_loader, optimizer, criterion, self.device, epoch, total
+            )
+            val_auc = evaluate_auc(model, val_loader, self.device, epoch, total)
             train_losses.append(loss)
             val_metrics.append(val_auc)
             improved = early.step(val_auc)
+            marker = "BEST" if improved else "    "
             if improved:
                 save_best_checkpoint(model, self.best_path, val_auc)
             save_checkpoint(model, optimizer, epoch, val_auc, self.last_path)
+            logger.info(
+                "  [%s] ep %d/%d  loss=%.4f  val_auc=%.4f  %s",
+                marker,
+                epoch,
+                total,
+                loss,
+                val_auc,
+                "(early stop)" if early.should_stop else "",
+            )
+            if tqdm is not None and isinstance(epochs_range, tqdm):
+                epochs_range.set_postfix(loss=f"{loss:.4f}", val_auc=f"{val_auc:.4f}")
             if early.should_stop:
                 stopped_epoch = epoch
                 break
+        best_val_auc = max(val_metrics) if val_metrics else 0.0
+        logger.info(
+            "Treino finalizado: best_val_auc=%.4f epochs_run=%d stopped=%s",
+            best_val_auc,
+            len(train_losses),
+            f"ep {stopped_epoch}" if stopped_epoch > 0 else "no",
+        )
         return TrainingHistory(
             train_losses=tuple(train_losses),
             val_metrics=tuple(val_metrics),
