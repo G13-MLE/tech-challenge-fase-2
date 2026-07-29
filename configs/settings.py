@@ -95,5 +95,5 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Retorna uma instancia unica de Settings por processo."""
+    """Retorna uma instância única de Settings por processo."""
     return Settings()

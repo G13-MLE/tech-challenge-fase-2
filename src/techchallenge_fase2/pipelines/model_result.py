@@ -1,8 +1,8 @@
-"""Container estruturado para resultados de avaliacao de modelos.
+"""Container estruturado para resultados de avaliação de modelos.
 
 Inspirado no ModelResult da Fase 1 (churn prediction), adapta o conceito
-para sistemas de recomendacao, agrupando metricas, tempos e metadados
-de cada modelo em um unico objeto imutavel.
+para sistemas de recomendação, agrupando métricas, tempos e metadados
+de cada modelo em um único objeto imutavel.
 """
 
 from __future__ import annotations
@@ -13,23 +13,23 @@ from typing import Any
 
 @dataclass(frozen=True, slots=True)
 class ModelResult:
-    """Resultado estruturado da avaliacao de um modelo de recomendacao.
+    """Resultado estruturado da avaliação de um modelo de recomendação.
 
-    Agrupa todas as informacoes de um modelo avaliado: metricas em
-    multiplos K, tempos de treino/inferencia, papel na comparacao
+    Agrupa todas as informações de um modelo avaliado: métricas em
+    multiplos K, tempos de treino/inferencia, papel na comparação
     e metadados adicionais.
 
     Attributes:
         model_name: Nome identificador do modelo (ex: "popularity").
-        model_role: Papel na comparacao ("baseline", "baseline_neural",
+        model_role: Papel na comparação ("baseline", "baseline_neural",
             "champion_candidate").
-        metrics: Dicionario com metricas no formato "metrica@K" -> valor.
+        metrics: Dicionario com métricas no formato "métrica@K" -> valor.
             Exemplo: {"precision@10": 0.12, "recall@10": 0.05, ...}.
         train_time_sec: Tempo de treino em segundos.
         infer_time_sec: Tempo de inferencia em segundos.
-        num_users_evaluated: Numero de usuarios avaliados.
-        catalog_coverage: Fracao do catalogo coberta pelas recomendacoes.
-        extra: Metadados adicionais (hiperparametros, configuracoes, etc.).
+        num_users_evaluated: Numero de usuários avaliados.
+        catalog_coverage: Fracao do catalogo coberta pelas recomendações.
+        extra: Metadados adicionais (hiperparametros, configurações, etc.).
     """
 
     model_name: str
@@ -42,28 +42,28 @@ class ModelResult:
     extra: dict[str, Any] = field(default_factory=dict)
 
     def metric_at_k(self, metric_name: str, k: int) -> float:
-        """Retorna o valor de uma metrica em um K especifico.
+        """Retorna o valor de uma métrica em um K especifico.
 
         Args:
-            metric_name: Nome da metrica (ex: "precision", "recall").
+            metric_name: Nome da métrica (ex: "precision", "recall").
             k: Valor de K (ex: 5, 10, 20).
 
         Returns:
-            Valor da metrica ou 0.0 se nao encontrada.
+            Valor da métrica ou 0.0 se não encontrada.
         """
         key = f"{metric_name}@{k}"
         return self.metrics.get(key, 0.0)
 
     def harmonic_mean_at_k(self, k: int) -> float:
-        """Calcula a media harmonica das 4 metricas canonicas em K.
+        """Calcula a media harmonica das 4 métricas canônicas em K.
 
-        As metricas canonicas sao: precision, recall, ndcg e map.
+        As métricas canônicas são: precision, recall, ndcg e map.
 
         Args:
-            k: Valor de K para as metricas.
+            k: Valor de K para as métricas.
 
         Returns:
-            Media harmonica. Retorna 0.0 se alguma metrica for zero.
+            Media harmonica. Retorna 0.0 se alguma métrica for zero.
         """
         values = [
             self.metric_at_k(m, k) for m in ("precision", "recall", "ndcg", "map")
@@ -73,10 +73,10 @@ class ModelResult:
         return len(values) / sum(1.0 / v for v in values)
 
     def to_comparison_dict(self) -> dict[str, Any]:
-        """Converte o resultado para dicionario plano para DataFrame.
+        """Converte o resultado para dicionário plano para DataFrame.
 
         Returns:
-            Dicionario com model_name, model_role, todas as metricas,
+            Dicionario com model_name, model_role, todas as métricas,
             tempos e metadados.
         """
         result: dict[str, Any] = {
@@ -124,17 +124,17 @@ def declare_champion(
     results: list[ModelResult],
     k: int = 10,
 ) -> tuple[ModelResult | None, ModelResult | None]:
-    """Declara o modelo campeao com base na media harmonica em K.
+    """Declara o modelo campeão com base na media harmonica em K.
 
-    O campeao e o modelo com maior media harmonica. Se houver
+    O campeão e o modelo com maior media harmonica. Se houver
     apenas um modelo, o runner_up sera None.
 
     Args:
         results: Lista de ModelResult.
-        k: Valor de K para comparacao.
+        k: Valor de K para comparação.
 
     Returns:
-        Tupla (campeao, segundo_colocado) com ModelResult ou None.
+        Tupla (campeão, segundo_colocado) com ModelResult ou None.
     """
     if not results:
         return None, None

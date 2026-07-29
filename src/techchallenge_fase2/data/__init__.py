@@ -1,7 +1,7 @@
-"""Carregamento e preparacao de interacoes do dataset RetailRocket.
+"""Carregamento e preparacao de interações do dataset RetailRocket.
 
-Responsavel por ler events.csv, mapear identificadores para indices
-inteiros, gerar amostras negativas e dividir treino/validacao por usuario.
+Responsavel por ler events.csv, mapear identificadores para índices
+inteiros, gerar amostras negativas e dividir treino/validação por usuário.
 """
 
 from __future__ import annotations
@@ -30,14 +30,14 @@ class InteractionData:
     """Dados preprocessados prontos para alimentar o modelo neural.
 
     Args:
-        user_ids: Tensores de indices de usuarios (treino).
-        item_ids: Tensores de indices de itens (treino).
+        user_ids: Tensores de índices de usuários (treino).
+        item_ids: Tensores de índices de itens (treino).
         labels: Tensores de labels (1 positiva, 0 negativa).
-        val_user_ids: Tensores de indices de usuarios (validacao).
-        val_item_ids: Tensores de indices de itens (validacao).
-        val_labels: Tensores de labels da validacao.
-        num_users: Total de usuarios unicos.
-        num_items: Total de itens unicos.
+        val_user_ids: Tensores de índices de usuários (validação).
+        val_item_ids: Tensores de índices de itens (validação).
+        val_labels: Tensores de labels da validação.
+        num_users: Total de usuários únicos.
+        num_items: Total de itens únicos.
     """
 
     user_ids: torch.Tensor
@@ -51,7 +51,7 @@ class InteractionData:
 
 
 def load_events(events_path: Path) -> pd.DataFrame:
-    """Le events.csv mantendo apenas interacoes positivas.
+    """Le events.csv mantendo apenas interações positivas.
 
     Args:
         events_path: Caminho para o arquivo events.csv.
@@ -66,7 +66,7 @@ def load_events(events_path: Path) -> pd.DataFrame:
 
 
 def build_id_mappings(df: pd.DataFrame) -> tuple[dict[int, int], dict[int, int]]:
-    """Cria mapeamentos estaveis de visitorid/itemid para indices densos.
+    """Cria mapeamentos estaveis de visitorid/itemid para índices densos.
 
     Args:
         df: DataFrame com colunas visitorid e itemid.
@@ -88,8 +88,8 @@ def encode_interactions(
 
     Args:
         df: DataFrame com colunas visitorid e itemid.
-        user2idx: Mapeamento visitorid -> indice.
-        item2idx: Mapeamento itemid -> indice.
+        user2idx: Mapeamento visitorid -> índice.
+        item2idx: Mapeamento itemid -> índice.
 
     Returns:
         DataFrame com colunas user_idx, item_idx, timestamp.
@@ -103,11 +103,11 @@ def encode_interactions(
 def split_train_validation(
     encoded: pd.DataFrame, validation_ratio: float = 0.2
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Divide temporal por usuario: ultimas interacoes ficam para validacao.
+    """Divide temporal por usuário: últimas interações ficam para validação.
 
     Args:
         encoded: DataFrame ordenado por timestamp com colunas user_idx, item_idx.
-        validation_ratio: Proporcao das interacoes de cada usuario para validacao.
+        validation_ratio: Proporcao das interações de cada usuário para validação.
 
     Returns:
         Tupla (train_df, val_df).
@@ -124,11 +124,11 @@ def split_train_validation(
 def sample_negatives(
     positives: pd.DataFrame, num_items: int, num_negatives: int, seed: int = 42
 ) -> pd.DataFrame:
-    """Gera interacoes negativas (itens nao consumidos pelo usuario).
+    """Gera interações negativas (itens não consumidos pelo usuário).
 
     Args:
         positives: DataFrame com colunas user_idx, item_idx.
-        num_items: Total de itens disponiveis.
+        num_items: Total de itens disponíveis.
         num_negatives: Numero de negativas por positiva.
         seed: Semente para reprodutibilidade.
 
@@ -145,7 +145,7 @@ def sample_negatives(
 def _sample_negative_rows(
     positives: pd.DataFrame, num_items: int, num_negatives: int, seed: int
 ) -> pd.DataFrame:
-    """Amostra itens negativos por usuario respeitando o historico positivo."""
+    """Amostra itens negativos por usuário respeitando o histórico positivo."""
     rng = torch.Generator().manual_seed(seed)
     seen = {
         (int(user), int(item))
@@ -191,7 +191,7 @@ def prepare_interaction_data(
     Args:
         events_path: Caminho para events.csv.
         num_negatives: Negativas por positiva no treino.
-        validation_ratio: Proporcao de validacao por usuario.
+        validation_ratio: Proporcao de validação por usuário.
         seed: Semente para reprodutibilidade.
 
     Returns:

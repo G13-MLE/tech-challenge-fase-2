@@ -67,17 +67,17 @@ def create_random_model(config: ModelConfig) -> RecommenderModel:
 
 
 def create_ease_torch_model(config: ModelConfig) -> RecommenderModel:
-    """Cria o recomendador EASE^ (candidato a campeao) a partir da config."""
+    """Cria o recomendador EASE^ (candidato a campeão) a partir da config."""
     return EASETorchRecommender(config.ease_config())
 
 
 def create_item_knn_model(config: ModelConfig) -> RecommenderModel:
-    """Cria o recomendador baseado em vizinhos mais proximos de itens."""
+    """Cria o recomendador baseado em vizinhos mais próximos de itens."""
     return ItemKNNRecommender(default_limit=config.recommendation_limit)
 
 
 def create_logistic_regression_model(config: ModelConfig) -> RecommenderModel:
-    """Cria o recomendador baseado em regressao logistica binaria."""
+    """Cria o recomendador baseado em regressão logistica binaria."""
     return LogisticRegressionRecommender(default_limit=config.recommendation_limit)
 
 

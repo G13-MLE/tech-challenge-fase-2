@@ -1,7 +1,7 @@
 """Early stopping para o loop de treinamento.
 
-Monitora uma metrica de validacao e interrompe o treino quando ela
-deixa de melhorar por um numero configuravel de epocas (patience),
+Monitora uma métrica de validação e interrompe o treino quando ela
+deixa de melhorar por um número configuravel de épocas (patience),
 preservando o estado do modelo de melhor desempenho.
 """
 
@@ -12,10 +12,10 @@ from dataclasses import dataclass
 
 @dataclass
 class EarlyStoppingState:
-    """Estado interno do EarlyStopping entre epocas.
+    """Estado interno do EarlyStopping entre épocas.
 
     Args:
-        best_score: Melhor pontuacao de validacao observada.
+        best_score: Melhor pontuação de validação observada.
         waiting: Epocas consecutivas sem melhora.
         stopped: Indica se o treinamento deve parar.
     """
@@ -26,22 +26,22 @@ class EarlyStoppingState:
 
 
 class EarlyStopping:
-    """Interrompe o treino quando a metrica de validacao para de melhorar.
+    """Interrompe o treino quando a métrica de validação para de melhorar.
 
     Args:
         patience: Epocas sem melhora antes de parar.
-        min_delta: Melhoria minima considerada significativa.
-        mode: "min" para metricas decrescentes (loss) ou "max" para AUC/recall.
+        min_delta: Melhoria mínima considerada significativa.
+        mode: "min" para métricas decrescentes (loss) ou "max" para AUC/recall.
     """
 
     def __init__(
         self, patience: int = 5, min_delta: float = 0.0, mode: str = "max"
     ) -> None:
-        """Inicializa parametros e estado de acompanhamento.
+        """Inicializa parâmetros e estado de acompanhamento.
 
         Args:
-            patience: Numero de epocas sem melhora antes de parar o treino.
-            min_delta: Variacao minima para considerar melhora significativa.
+            patience: Numero de épocas sem melhora antes de parar o treino.
+            min_delta: Variacao mínima para considerar melhora significativa.
             mode: "min" se menor e melhor, "max" se maior e melhor.
         """
         if patience < 1:
@@ -57,7 +57,7 @@ class EarlyStopping:
         )
 
     def _is_improvement(self, score: float) -> bool:
-        """Verifica se a nova pontuacao melhora a melhor atual."""
+        """Verifica se a nova pontuação melhora a melhor atual."""
         if self.mode == "min":
             return score < self.state.best_score - self.min_delta
         return score > self.state.best_score + self.min_delta
@@ -66,7 +66,7 @@ class EarlyStopping:
         """Atualiza o estado e indica se houve melhora.
 
         Args:
-            score: Metrica de validacao da epoca atual.
+            score: Metrica de validação da época atual.
 
         Returns:
             True se este e o novo melhor estado (momento de salvar checkpoint).
@@ -87,5 +87,5 @@ class EarlyStopping:
 
     @property
     def best_score(self) -> float:
-        """Retorna a melhor pontuacao de validacao observada."""
+        """Retorna a melhor pontuação de validação observada."""
         return self.state.best_score

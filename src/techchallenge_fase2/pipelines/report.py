@@ -1,8 +1,8 @@
-"""Gerador de relatorio markdown para comparacao de modelos de recomendacao.
+"""Gerador de relatório markdown para comparação de modelos de recomendação.
 
 Inspirado no generate_markdown_report da Fase 1 (churn prediction),
-adapta o conceito para sistemas de recomendacao com metricas Top-K,
-declaracao de campeao e analise de trade-offs.
+adapta o conceito para sistemas de recomendação com métricas Top-K,
+declaração de campeão e análise de trade-offs.
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ from techchallenge_fase2.pipelines.model_result import (
     rank_models,
 )
 
-# Metricas canonicas para a tabela principal
+# Métricas canônicas para a tabela principal
 CANONICAL_METRICS = ("precision", "recall", "ndcg", "map", "hit_rate")
 
-# Cabecalhos em portugues para o relatorio
+# Cabeçalhos em português para o relatório
 METRIC_LABELS: dict[str, str] = {
     "precision": "Precision",
     "recall": "Recall",
@@ -31,14 +31,14 @@ METRIC_LABELS: dict[str, str] = {
 ROLE_LABELS: dict[str, str] = {
     "baseline": "Baseline",
     "baseline_neural": "Baseline Neural",
-    "champion_candidate": "Candidato a Campeao",
+    "champion_candidate": "Candidato a Campeão",
 }
 
 
 def extract_k_values_from_metrics(
     metrics: dict[str, float],
 ) -> list[int]:
-    """Extrai valores de K presentes nas chaves de metricas."""
+    """Extrai valores de K presentes nas chaves de métricas."""
     k_values: set[int] = set()
     for key in metrics:
         if "@" in key:
@@ -62,7 +62,7 @@ def build_comparison_table(
     results: list[ModelResult],
     k_values: tuple[int, ...] | None = None,
 ) -> str:
-    """Constroi tabela markdown comparativa de modelos.
+    """Constrói tabela markdown comparativa de modelos.
 
     Args:
         results: Lista de ModelResult.
@@ -73,7 +73,7 @@ def build_comparison_table(
         String com tabela markdown.
     """
     if not results:
-        return "_Nenhum resultado disponivel._"
+        return "_Nenhum resultado disponível._"
 
     if k_values is None:
         detected_ks = get_k_values(results)
@@ -81,7 +81,7 @@ def build_comparison_table(
 
     ranked = rank_models(results, k=k_values[0] if k_values else 10)
 
-    # Cabecalho da tabela
+    # Cabeçalho da tabela
     header_parts = ["Modelo", "Papel"]
     for k in k_values:
         for metric in CANONICAL_METRICS:
@@ -115,24 +115,24 @@ def build_champion_section(
     results: list[ModelResult],
     k: int = 10,
 ) -> str:
-    """Constroi secao markdown com declaracao do campeao.
+    """Constrói seção markdown com declaração do campeão.
 
     Args:
         results: Lista de ModelResult.
-        k: Valor de K para comparacao.
+        k: Valor de K para comparação.
 
     Returns:
-        String com secao markdown do campeao.
+        String com seção markdown do campeão.
     """
     champion, runner_up = declare_champion(results, k)
 
     if champion is None:
-        return "### Campeao\n\n_Nenhum modelo avaliado._\n"
+        return "### Campeão\n\n_Nenhum modelo avaliado._\n"
 
     role_label = ROLE_LABELS.get(champion.model_role, champion.model_role)
     hm = champion.harmonic_mean_at_k(k)
     lines = [
-        "### Campeao",
+        "### Campeão",
         "",
         f"**{champion.model_name}** ({role_label}) com H-Mean@{k} = {hm:.4f}",
         "",
@@ -151,8 +151,8 @@ def build_champion_section(
             lines.append(f"Vantagem sobre **{runner_up.model_name}**: +{gain:.4f}")
         lines.append("")
 
-    # Metricas detalhadas do campeao
-    lines.append("| Metrica | Valor |")
+    # Métricas detalhadas do campeão
+    lines.append("| Métrica | Valor |")
     lines.append("| --- | --- |")
     champion_k_values = extract_k_values_from_metrics(champion.metrics)
     for metric in CANONICAL_METRICS:
@@ -171,17 +171,17 @@ def build_tradeoff_section(
     results: list[ModelResult],
     k: int = 10,
 ) -> str:
-    """Constroi secao markdown com analise de trade-offs entre modelos.
+    """Constrói seção markdown com análise de trade-offs entre modelos.
 
     Analisa a relacao entre precision e recall, e entre
-    qualidade de recomendacao e tempo de inferencia.
+    qualidade de recomendação e tempo de inferencia.
 
     Args:
         results: Lista de ModelResult.
-        k: Valor de K para a analise.
+        k: Valor de K para a análise.
 
     Returns:
-        String com secao markdown de trade-offs.
+        String com seção markdown de trade-offs.
     """
     if not results:
         return ""
@@ -206,7 +206,7 @@ def build_tradeoff_section(
 
     lines.append("")
     lines.append(
-        "_Precision favorece recomendacoes mais acuradas com menos "
+        "_Precision favorece recomendações mais acuradas com menos "
         "itens; Recall favorece cobertura mais ampla dos itens "
         "relevantes. O trade-off entre qualidade e velocidade e "
         "importante para sistemas em producao._"
@@ -226,22 +226,22 @@ def build_data_section(
     val_ratio: float | None = None,
     random_seed: int = 42,
 ) -> str:
-    """Constroi secao markdown com resumo dos dados.
+    """Constrói seção markdown com resumo dos dados.
 
     Args:
-        num_users: Numero total de usuarios.
+        num_users: Numero total de usuários.
         num_items: Numero total de itens.
-        num_interactions: Numero total de interacoes.
-        num_evaluated_users: Numero de usuarios avaliados.
+        num_interactions: Numero total de interações.
+        num_evaluated_users: Numero de usuários avaliados.
         dataset_name: Nome do dataset.
-        split_strategy: Estrategia de divisao.
-        test_ratio: Fracao reservada para teste.
-        val_ratio: Fracao reservada para validacao (3-way split).
+        split_strategy: Estratégia de divisão.
+        test_ratio: Fração reservada para teste.
+        val_ratio: Fração reservada para validação (3-way split).
             Se None, usa split 2-way.
         random_seed: Seed para reprodutibilidade.
 
     Returns:
-        String com secao markdown de dados.
+        String com seção markdown de dados.
     """
     sparsity = (
         1.0 - (num_interactions / (num_users * num_items))
@@ -264,7 +264,7 @@ def build_data_section(
         "### Dados",
         "",
         f"- **Dataset**: {dataset_name}",
-        f"- **Estrategia de divisao**: {split_desc}",
+        f"- **Estratégia de divisão**: {split_desc}",
         f"- **Usuarios totais**: {num_users:,}",
         f"- **Itens totais**: {num_items:,}",
         f"- **Interacoes totais**: {num_interactions:,}",
@@ -289,27 +289,27 @@ def generate_markdown_report(  # noqa: PLR0913
     val_ratio: float | None = 0.15,
     random_seed: int = 42,
 ) -> str:
-    """Gera relatorio markdown completo de comparacao de modelos.
+    """Gera relatório markdown completo de comparação de modelos.
 
     Inspirado no generate_markdown_report da Fase 1, adaptado para
-    sistemas de recomendacao com metricas Top-K.
+    sistemas de recomendação com métricas Top-K.
 
     Args:
         results: Lista de ModelResult com resultados de cada modelo.
         k_values: Valores de K avaliados.
-        champion_k: Valor de K para declaracao do campeao.
-        num_users: Numero total de usuarios no dataset.
+        champion_k: Valor de K para declaração do campeão.
+        num_users: Numero total de usuários no dataset.
         num_items: Numero total de itens no dataset.
-        num_interactions: Numero total de interacoes.
-        num_evaluated_users: Numero de usuarios avaliados.
+        num_interactions: Numero total de interações.
+        num_evaluated_users: Numero de usuários avaliados.
         dataset_name: Nome do dataset.
-        split_strategy: Estrategia de divisao treino/val/teste.
-        test_ratio: Fracao reservada para teste.
-        val_ratio: Fracao reservada para validacao (3-way split).
+        split_strategy: Estratégia de divisão treino/val/teste.
+        test_ratio: Fração reservada para teste.
+        val_ratio: Fração reservada para validação (3-way split).
         random_seed: Seed para reprodutibilidade.
 
     Returns:
-        String com relatorio markdown completo.
+        String com relatório markdown completo.
     """
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     ranked = rank_models(results, champion_k)
@@ -336,7 +336,7 @@ def generate_markdown_report(  # noqa: PLR0913
         "",
         "## Resultados",
         "",
-        f"### Tabela Comparativa (metricas em K={k_str})",
+        f"### Tabela Comparativa (métricas em K={k_str})",
         "",
         build_comparison_table(results, k_values=k_values),
         "",
@@ -377,7 +377,7 @@ def save_markdown_report(
 
     Args:
         content: Conteudo markdown.
-        output_path: Caminho do arquivo de saida.
+        output_path: Caminho do arquivo de saída.
 
     Returns:
         Caminho do arquivo salvo.

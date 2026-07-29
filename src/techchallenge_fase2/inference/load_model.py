@@ -1,7 +1,7 @@
 """Carregador de modelo de Production do MLflow Model Registry.
 
-Fornece utilitario para carregar a versao em Production do modelo
-registrado e CLI para gerar recomendacoes de um usuario.
+Fornece utilitario para carregar a versão em Production do modelo
+registrado e CLI para gerar recomendações de um usuário.
 
 Uso:
     $ uv run python -m techchallenge_fase2.inference.load_model \\
@@ -35,7 +35,7 @@ def load_production_model(
     model_name: str = DEFAULT_MODEL_NAME,
     stage: str = PRODUCTION_STAGE,
 ) -> Any:
-    """Carrega a versao atual de Production do Model Registry.
+    """Carrega a versão atual de Production do Model Registry.
 
     Args:
         model_name: Nome do modelo no Registry.
@@ -45,19 +45,19 @@ def load_production_model(
         Modelo pyfunc carregado.
 
     Raises:
-        RuntimeError: Se nao houver versao no stage informado.
+        RuntimeError: Se não houver versão no stage informado.
     """
     client = mlflow.tracking.MlflowClient()
     versions = client.get_latest_versions(model_name, stages=[stage])
     if not versions:
         msg = (
-            f"Nenhuma versao de '{model_name}' em {stage}. "
+            f"Nenhuma versão de '{model_name}' em {stage}. "
             "Rode 'make register' e 'make promote' antes da inferencia."
         )
         raise RuntimeError(msg)
     model_uri = f"models:/{model_name}/{stage}"
     logger.info(
-        "Carregando %s versao %s (%s)",
+        "Carregando %s versão %s (%s)",
         model_name,
         versions[0].version,
         stage,
@@ -70,12 +70,12 @@ def recommend(
     user_id: str,
     limit: int | None = None,
 ) -> list[str]:
-    """Gera recomendacoes para um usuario usando o pyfunc carregado.
+    """Gera recomendações para um usuário usando o pyfunc carregado.
 
     Args:
         model: Modelo pyfunc carregado.
-        user_id: Identificador do usuario como string.
-        limit: Numero maximo de recomendacoes.
+        user_id: Identificador do usuário como string.
+        limit: Numero máximo de recomendações.
 
     Returns:
         Lista de identificadores de itens recomendados.
@@ -102,16 +102,16 @@ def parse_args() -> argparse.Namespace:
         help=f"Nome do modelo no Registry (default: {DEFAULT_MODEL_NAME})",
     )
     sub = parser.add_subparsers(dest="command", required=True)
-    rec = sub.add_parser("recommend", help="Recomenda itens para um usuario")
-    rec.add_argument("--user-id", required=True, help="Identificador do usuario")
-    rec.add_argument("--limit", type=int, default=None, help="Top-K recomendacoes")
+    rec = sub.add_parser("recommend", help="Recomenda itens para um usuário")
+    rec.add_argument("--user-id", required=True, help="Identificador do usuário")
+    rec.add_argument("--limit", type=int, default=None, help="Top-K recomendações")
     rec.add_argument("--json", action="store_true", help="Saida em JSON")
     rec.add_argument(
         "--stage",
         default=PRODUCTION_STAGE,
         help="Stage de onde carregar (default: Production)",
     )
-    list_versions = sub.add_parser("list-versions", help="Lista versoes registradas")
+    list_versions = sub.add_parser("list-versions", help="Lista versões registradas")
     list_versions.add_argument(
         "--stage",
         default=None,
@@ -121,7 +121,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def list_versions(model_name: str, stage: str | None) -> int:
-    """Lista versoes registradas do modelo no stdout.
+    """Lista versões registradas do modelo no stdout.
 
     Args:
         model_name: Nome do modelo no Registry.
@@ -134,12 +134,12 @@ def list_versions(model_name: str, stage: str | None) -> int:
     stages = [stage] if stage else None
     versions = client.get_latest_versions(model_name, stages=stages)
     if not versions:
-        print(f"Nenhuma versao de '{model_name}' encontrada.")
+        print(f"Nenhuma versão de '{model_name}' encontrada.")
         return 0
     print(f"Versoes de '{model_name}':")
     for version in versions:
         print(
-            f"  versao {version.version} | stage {version.current_stage} | "
+            f"  versão {version.version} | stage {version.current_stage} | "
             f"run_id {version.run_id} | status {version.status}"
         )
     return 0
@@ -149,7 +149,7 @@ def main() -> int:
     """Ponto de entrada da CLI de inferencia.
 
     Returns:
-        Codigo de saida (0 sucesso, 1 erro).
+        Codigo de saída (0 sucesso, 1 erro).
     """
     args = parse_args()
     load_dotenv_silent()

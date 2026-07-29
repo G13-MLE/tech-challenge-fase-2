@@ -1,4 +1,4 @@
-"""Testes unitarios para o modulo de relatorio markdown."""
+"""Testes unitarios para o módulo de relatório markdown."""
 
 import tempfile
 from pathlib import Path
@@ -24,7 +24,7 @@ def make_result(
     hit_rate: float = 0.2,
     k: int = 10,
 ) -> ModelResult:
-    """Cria um ModelResult com metricas padrao para testes."""
+    """Cria um ModelResult com métricas padrão para testes."""
     return ModelResult(
         model_name=name,
         model_role=role,
@@ -57,7 +57,7 @@ class TestBuildComparisonTable:
         assert "popularity" in table
 
     def test_table_contains_metric_headers(self) -> None:
-        """Tabela contem cabecalhos das metricas."""
+        """Tabela contem cabeçalhos das métricas."""
         result = make_result(
             name="ease_torch",
             role="champion_candidate",
@@ -69,7 +69,7 @@ class TestBuildComparisonTable:
         assert "MAP@10" in table
 
     def test_table_ranks_by_harmonic_mean(self) -> None:
-        """Modelos sao ordenados por media harmonica decrescente."""
+        """Modelos são ordenados por media harmonica decrescente."""
         best = make_result(
             name="best",
             precision=0.5,
@@ -85,10 +85,10 @@ class TestBuildComparisonTable:
             map_val=0.06,
         )
         table = build_comparison_table([worst, best], k_values=(10,))
-        # Melhor modelo aparece primeiro (apos cabecalho e separador)
+        # Melhor modelo aparece primeiro (apos cabeçalho e separador)
         lines = table.strip().split("\n")
         data_lines = [line for line in lines if "|" in line and "---" not in line]
-        # data_lines[0] = cabecalho, data_lines[1] = melhor modelo
+        # data_lines[0] = cabeçalho, data_lines[1] = melhor modelo
         assert "best" in data_lines[1]
 
 
@@ -96,12 +96,12 @@ class TestBuildChampionSection:
     """Testes para build_champion_section."""
 
     def test_empty_results_returns_no_model(self) -> None:
-        """Secao do campeao com resultados vazios indica nenhum modelo."""
+        """Secao do campeão com resultados vazios indica nenhum modelo."""
         section = build_champion_section([])
         assert "Nenhum modelo" in section
 
     def test_declares_best_model_as_champion(self) -> None:
-        """Campeao e o modelo com maior media harmonica."""
+        """Campeão e o modelo com maior media harmonica."""
         best = make_result(
             name="ease_torch",
             role="champion_candidate",
@@ -114,7 +114,7 @@ class TestBuildChampionSection:
         )
         section = build_champion_section([best, worst])
         assert "ease_torch" in section
-        assert "Campeao" in section
+        assert "Campeão" in section
 
     def test_shows_advantage_over_runner_up(self) -> None:
         """Secao mostra vantagem sobre o segundo colocado."""
@@ -152,7 +152,7 @@ class TestBuildTradeoffSection:
         assert "popularity" in section
 
     def test_contains_metric_headers(self) -> None:
-        """Secao contem cabecalhos de metricas."""
+        """Secao contem cabeçalhos de métricas."""
         result = make_result(name="popularity")
         section = build_tradeoff_section([result], k=10)
         assert "Precision" in section
@@ -171,7 +171,7 @@ class TestBuildDataSection:
         assert "RetailRocket" in section
 
     def test_contains_user_and_item_counts(self) -> None:
-        """Secao contem contagens de usuarios e itens."""
+        """Secao contem contagens de usuários e itens."""
         section = build_data_section(num_users=1000, num_items=500)
         assert "1,000" in section
         assert "500" in section
@@ -186,7 +186,7 @@ class TestBuildDataSection:
         assert "Esparsidade" in section
 
     def test_3way_split_description_shows_validation(self) -> None:
-        """Secao com val_ratio mostra split 3-way com validacao."""
+        """Secao com val_ratio mostra split 3-way com validação."""
         section = build_data_section(
             num_users=100,
             num_items=200,
@@ -201,7 +201,7 @@ class TestBuildDataSection:
         assert "15% teste" in section
 
     def test_2way_split_description_omits_validation(self) -> None:
-        """Secao sem val_ratio mostra split 2-way sem validacao."""
+        """Secao sem val_ratio mostra split 2-way sem validação."""
         section = build_data_section(
             num_users=100,
             num_items=200,
@@ -210,7 +210,7 @@ class TestBuildDataSection:
             test_ratio=0.15,
             val_ratio=None,
         )
-        assert "val" not in section.lower().split("estrategia")[1].split("(")[0]
+        assert "val" not in section.lower().split("estratégia")[1].split("(")[0]
 
 
 class TestGenerateMarkdownReport:
@@ -232,7 +232,7 @@ class TestGenerateMarkdownReport:
         assert "random" in report
 
     def test_report_has_all_sections(self) -> None:
-        """Relatorio contem todas as secoes esperadas."""
+        """Relatorio contem todas as seções esperadas."""
         result = make_result(
             name="ease_torch",
             role="champion_candidate",
@@ -243,7 +243,7 @@ class TestGenerateMarkdownReport:
         assert "Ranking" in report
 
     def test_report_includes_data_section(self) -> None:
-        """Relatorio inclui secao de dados."""
+        """Relatorio inclui seção de dados."""
         report = generate_markdown_report(
             results=[make_result()],
             num_users=1000,
@@ -259,7 +259,7 @@ class TestSaveMarkdownReport:
     """Testes para save_markdown_report."""
 
     def test_creates_directory_and_file(self) -> None:
-        """Salva relatorio criando diretorios se necessario."""
+        """Salva relatório criando diretorios se necessário."""
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "subdir" / "report.md"
             result_path = save_markdown_report("# Test Report", path)

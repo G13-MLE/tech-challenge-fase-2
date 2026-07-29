@@ -1,7 +1,7 @@
 """Salvamento e carregamento de checkpoints do modelo neural.
 
-Os checkpoints preservam pesos, estado do otimizador, epoca atual e
-melhor metrica de validacao, permitindo retomar o treino ou restaurar
+Os checkpoints preservam pesos, estado do otimizador, época atual e
+melhor métrica de validação, permitindo retomar o treino ou restaurar
 o melhor modelo apos early stopping.
 """
 
@@ -27,7 +27,7 @@ def save_checkpoint(
         model: Modelo NCF cujos pesos serao persistidos.
         optimizer: Otimizador cujo estado sera persistido.
         epoch: Epoca atual do treinamento.
-        metric: Valor da metrica de validacao associada.
+        metric: Valor da métrica de validação associada.
         path: Caminho do arquivo .pt onde o checkpoint sera escrito.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,7 +52,7 @@ def load_checkpoint(
 
     Args:
         model: Modelo NCF que recebera os pesos carregados.
-        optimizer: Otimizador a restaurar (None para nao restaurar).
+        optimizer: Otimizador a restaurar (None para não restaurar).
         path: Caminho do arquivo .pt de checkpoint.
 
     Returns:
@@ -83,7 +83,7 @@ def load_model_from_checkpoint(path: Path) -> NeuralCollaborativeFiltering:
         path: Caminho do arquivo .pt de checkpoint.
 
     Returns:
-        Modelo NCF pronto para recomendacao ou avaliacao.
+        Modelo NCF pronto para recomendação ou avaliação.
     """
     payload = torch.load(path, weights_only=False)
     model = NeuralCollaborativeFiltering(payload["config"])

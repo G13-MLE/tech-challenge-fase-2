@@ -1,4 +1,4 @@
-"""Testes unitarios para a divisao cronologica de treino/teste."""
+"""Testes unitarios para a divisao cronológica de treino/teste."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from techchallenge_fase2.pipelines.splits import (
 
 
 def make_interactions_df() -> pd.DataFrame:
-    """Cria um DataFrame de interacoes com timestamps ordenados."""
+    """Cria um DataFrame de interações com timestamps ordenados."""
     return pd.DataFrame(
         {
             "user_id": ["u1", "u1", "u2", "u2", "u3", "u3", "u4", "u4"],
@@ -24,7 +24,7 @@ def make_interactions_df() -> pd.DataFrame:
 
 
 def make_large_interactions_df() -> pd.DataFrame:
-    """Cria um DataFrame com mais interacoes para o split 3-way."""
+    """Cria um DataFrame com mais interações para o split 3-way."""
     return pd.DataFrame(
         {
             "user_id": [f"u{i % 5}" for i in range(20)],
@@ -35,7 +35,7 @@ def make_large_interactions_df() -> pd.DataFrame:
 
 
 def test_chronological_split_separates_train_and_test() -> None:
-    """Split cronologico deve separar treino e teste por timestamp."""
+    """Split cronológico deve separar treino e teste por timestamp."""
     df = make_interactions_df()
     split = chronological_holdout_split(df, test_ratio=0.25)
     assert len(split.train_interactions) == 6
@@ -43,14 +43,14 @@ def test_chronological_split_separates_train_and_test() -> None:
 
 
 def test_chronological_split_preserves_time_order() -> None:
-    """Treino deve conter interacoes mais antigas que teste."""
+    """Treino deve conter interações mais antigas que teste."""
     df = make_interactions_df()
     split = chronological_holdout_split(df, test_ratio=0.25)
     assert split.train_cutoff < df["timestamp"].iloc[-1]
 
 
 def test_chronological_split_builds_ground_truth() -> None:
-    """Ground truth deve agregar itens do periodo de teste."""
+    """Ground truth deve agregar itens do período de teste."""
     df = make_interactions_df()
     split = chronological_holdout_split(df, test_ratio=0.25)
     assert len(split.ground_truth) > 0
@@ -59,7 +59,7 @@ def test_chronological_split_builds_ground_truth() -> None:
 
 
 def test_filter_warm_start_removes_cold_users() -> None:
-    """Usuarios sem interacoes no treino devem ser removidos do ground truth."""
+    """Usuarios sem interações no treino devem ser removidos do ground truth."""
     df = make_interactions_df()
     split = chronological_holdout_split(df, test_ratio=0.25)
     filtered = filter_warm_start(split)
@@ -80,7 +80,7 @@ def test_filter_warm_start_removes_cold_items() -> None:
 
 
 def test_chronological_3way_split_produces_three_partitions() -> None:
-    """Split 3-way deve produzir treino, validacao e teste nao vazios."""
+    """Split 3-way deve produzir treino, validação e teste não vazios."""
     df = make_large_interactions_df()
     split = chronological_train_val_test_split(df, val_ratio=0.15, test_ratio=0.15)
     assert len(split.train_interactions) > 0
@@ -89,7 +89,7 @@ def test_chronological_3way_split_produces_three_partitions() -> None:
 
 
 def test_chronological_3way_split_proportions_match() -> None:
-    """As proporcoes do split 3-way devem respeitar val_ratio e test_ratio."""
+    """As proporções do split 3-way devem respeitar val_ratio e test_ratio."""
     df = make_large_interactions_df()
     n_total = len(df)
     split = chronological_train_val_test_split(df, val_ratio=0.15, test_ratio=0.15)
@@ -99,14 +99,14 @@ def test_chronological_3way_split_proportions_match() -> None:
 
 
 def test_chronological_3way_split_preserves_time_order() -> None:
-    """Treino deve ser mais antigo que validacao, que e mais antiga que teste."""
+    """Treino deve ser mais antigo que validação, que e mais antiga que teste."""
     df = make_large_interactions_df()
     split = chronological_train_val_test_split(df, val_ratio=0.15, test_ratio=0.15)
     assert split.train_cutoff < split.val_cutoff
 
 
 def test_chronological_3way_split_builds_both_ground_truths() -> None:
-    """Split 3-way deve construir ground truth de validacao e teste."""
+    """Split 3-way deve construir ground truth de validação e teste."""
     df = make_large_interactions_df()
     split = chronological_train_val_test_split(df, val_ratio=0.15, test_ratio=0.15)
     assert isinstance(split.val_ground_truth, dict)
@@ -114,7 +114,7 @@ def test_chronological_3way_split_builds_both_ground_truths() -> None:
 
 
 def test_filter_warm_start_3way_removes_cold_users() -> None:
-    """filter_warm_start_three_way remove usuarios sem interacoes no treino."""
+    """filter_warm_start_three_way remove usuários sem interações no treino."""
     df = make_large_interactions_df()
     split = chronological_train_val_test_split(df, val_ratio=0.15, test_ratio=0.15)
     filtered = filter_warm_start_three_way(split)

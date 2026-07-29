@@ -186,7 +186,7 @@ class RecommenderModelFactoryTest(unittest.TestCase):
         self.assertEqual(model._model.config.num_items, 4)
 
     def test_creates_ease_torch_model(self) -> None:
-        """Factory cria o recomendador EASE^ (candidato a campeao)."""
+        """Factory cria o recomendador EASE^ (candidato a campeão)."""
         config = ModelConfig(
             ModelType.EASE_TORCH,
             recommendation_limit=3,

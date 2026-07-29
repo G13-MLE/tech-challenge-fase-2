@@ -1,10 +1,10 @@
 """Train the PyTorch neural recommender (NCF) for the DVC pipeline.
 
-Orquestra a leitura das features de treino/validacao, a amostragem negativa,
+Orquestra a leitura das features de treino/validação, a amostragem negativa,
 a instanciacao do NCF via Factory e o loop de treinamento delegando ao
-``Trainer`` do modulo ``techchallenge_fase2.training``, que aplica early
-stopping, valida por AUC a cada epoca e persiste checkpoints best/last.
-Tambem registra hiperparametros, metricas, artefatos e o modelo no MLflow,
+``Trainer`` do módulo ``techchallenge_fase2.training``, que aplica early
+stopping, valida por AUC a cada época e persiste checkpoints best/last.
+Tambem registra hiperparametros, métricas, artefatos e o modelo no MLflow,
 reaproveitando os utilitarios de ``techchallenge_fase2.training.mlflow_tracking``.
 """
 
@@ -132,13 +132,13 @@ def sample_negative_item(
 
     Usa amostragem por rejeicao (custo amortizado O(1) por chamada em
     catalogos esparsos), amostrando um item uniformemente em [0, num_items)
-    e descartando candidatos que ja foram vistos. Para o caso edge de
+    e descartando candidatos que já foram vistos. Para o caso edge de
     catalogos pequenos/saturados faz fallback para a diferenca de conjuntos,
     garantindo que nunca retorna um item positivo disfarcado de negativo.
 
     Raises:
-        ValueError: Quando o usuario ja interagiu com todos os itens do
-            catalogo (nao existe negativo valido).
+        ValueError: Quando o usuário já interagiu com todos os itens do
+            catalogo (não existe negativo valido).
     """
     max_attempts = 50
     for _ in range(max_attempts):
@@ -159,7 +159,7 @@ def sample_negative_from_missing(
     missing = list(set(range(num_items)) - user_items)
     if not missing:
         raise ValueError(
-            "Nao ha item negativo disponivel: usuario consumiu todo o catalogo",
+            "Nao ha item negativo disponível: usuário consumiu todo o catalogo",
         )
     return int(rng.choice(missing))
 
@@ -173,7 +173,7 @@ def build_negative_rows(
 ) -> list[LabelRow]:
     """Create sampled negative rows for one user.
 
-    Ignora o usuario quando ele ja interagiu com todos os itens do catalogo,
+    Ignora o usuário quando ele já interagiu com todos os itens do catalogo,
     evitando rotular um positivo como negativo e corromper o treino.
     """
     if len(user_items) >= num_items:
@@ -227,7 +227,7 @@ def build_labeled_tensors(
     rows = build_label_rows(frame, params, num_items)
     if not rows:
         raise ValueError(
-            "Nao foi possivel gerar amostras de treino; verifique o split",
+            "Nao foi possível gerar amostras de treino; verifique o split",
         )
     return rows_to_tensors(rows)
 
@@ -280,7 +280,7 @@ def save_pipeline_checkpoint(
 def build_training_hyperparameters(
     params: PipelineParams, users: int, items: int, dataset_version: str
 ) -> dict[str, Any]:
-    """Constroi o dict de hiperparametros para logar no MLflow."""
+    """Constrói o dict de hiperparametros para logar no MLflow."""
     train_df = load_features(params.paths.train_features)
     val_df = load_features(params.paths.validation_features)
     return {
@@ -306,7 +306,7 @@ def build_training_hyperparameters(
 def build_input_summary(
     params: PipelineParams, users: int, items: int, dataset_version: str
 ) -> dict[str, Any]:
-    """Constroi resumo dos dados de entrada para artefato MLflow."""
+    """Constrói resumo dos dados de entrada para artefato MLflow."""
     train_df = load_features(params.paths.train_features)
     val_df = load_features(params.paths.validation_features)
     num_train = int(len(train_df))
@@ -327,7 +327,7 @@ def build_input_summary(
 
 
 def summarize_history(history: TrainingHistory) -> dict[str, float]:
-    """Extrai metricas finais agregadas do historico de treino."""
+    """Extrai métricas finais agregadas do histórico de treino."""
     train_losses = history.train_losses
     val_metrics = history.val_metrics
     return {
@@ -340,7 +340,7 @@ def summarize_history(history: TrainingHistory) -> dict[str, float]:
 
 
 def save_history_artifact(history: TrainingHistory, artifact_path: Path) -> Path:
-    """Salva o historico de treino/validacao como JSON para artefato MLflow."""
+    """Salva o histórico de treino/validação como JSON para artefato MLflow."""
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "train_losses": list(history.train_losses),
@@ -361,7 +361,7 @@ def log_training_run(
     items: int,
     dataset_version: str,
 ) -> None:
-    """Registra hiperparametros, metricas, modelo e artefatos no MLflow.
+    """Registra hiperparametros, métricas, modelo e artefatos no MLflow.
 
     Reutiliza os utilitarios genericos de ``mlflow_tracking`` para manter
     consistencia com a pipeline de baselines.
@@ -384,7 +384,7 @@ def log_training_run(
     # Log do modelo PyTorch como artefato do MLflow.
     log_recommender_model(model, "neural_ncf", artifact_path="model")
 
-    # Salva e loga o historico de treino como artefato JSON.
+    # Salva e loga o histórico de treino como artefato JSON.
     history_path = save_history_artifact(
         history, Path("models") / "training_history.json"
     )
@@ -394,7 +394,7 @@ def log_training_run(
     if params.paths.model_checkpoint.exists():
         log_artifacts([params.paths.model_checkpoint])
 
-    # Model Card do NCF (reaproveita o builder generico de model_card.py).
+    # Model Card do NCF (reaproveita o builder genérico de model_card.py).
     card = build_model_card(
         "neural_ncf",
         random_seed=params.training.random_seed,
@@ -431,13 +431,13 @@ def run(params: PipelineParams) -> None:
     users, items = load_entity_counts(params.paths.mappings)
     model = create_ncf_model(params, users, items)
     logger.info(
-        "  catalogo: usuarios=%d itens=%d embedding_dim=%d",
+        "  catalogo: usuários=%d itens=%d embedding_dim=%d",
         users,
         items,
         params.training.embedding_dim,
     )
     logger.info(
-        "  treino: %d interacoes | validacao: %d interacoes",
+        "  treino: %d interações | validação: %d interações",
         len(train_frame),
         len(val_frame),
     )
@@ -445,7 +445,7 @@ def run(params: PipelineParams) -> None:
     val_tensors = build_labeled_tensors(val_frame, params, items)
     data = to_interaction_data(train_tensors, val_tensors, users, items)
     logger.info(
-        "  exemplos rotulados: treino=%d (positivos+%d neg/usuario) validacao=%d",
+        "  exemplos rotulados: treino=%d (positivos+%d neg/usuário) validação=%d",
         len(train_tensors.users),
         params.training.negative_samples,
         len(val_tensors.users),
@@ -460,11 +460,11 @@ def run(params: PipelineParams) -> None:
         log_training_run(model, params, history, users, items, dataset_version)
 
     logger.info(
-        "Treino concluido: best_val_auc=%.4f epochs_run=%d",
+        "Treino concluído: best_val_auc=%.4f epochs_run=%d",
         max(history.val_metrics) if history.val_metrics else 0.0,
         len(history.train_losses),
     )
-    logger.info("[STAGE 3/4] TRAIN concluido")
+    logger.info("[STAGE 3/4] TRAIN concluído")
     logger.info("=" * 70)
 
 

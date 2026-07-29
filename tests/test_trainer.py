@@ -1,4 +1,4 @@
-"""Testes do Trainer (loop de treino com validacao e early stopping)."""
+"""Testes do Trainer (loop de treino com validação e early stopping)."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _toy_interaction() -> InteractionData:
 
 
 def test_trainer_executa_epocas_e_salva_checkpoints(tmp_path: Path) -> None:
-    """Trainer treina NCF, historico coerente e melhores/last checkpoints salvos."""
+    """Trainer treina NCF, histórico coerente e melhores/last checkpoints salvos."""
     config = TrainingConfig(
         learning_rate=0.01, batch_size=2, epochs=3, patience=5, device="cpu"
     )
@@ -52,7 +52,7 @@ def test_trainer_executa_epocas_e_salva_checkpoints(tmp_path: Path) -> None:
 
 
 def test_trainer_dispara_early_stopping(tmp_path: Path) -> None:
-    """Sem melhora, patience atingido encerra o treino antes de todas as epocas."""
+    """Sem melhora, patience atingido encerra o treino antes de todas as épocas."""
     config = TrainingConfig(
         learning_rate=0.01, batch_size=2, epochs=10, patience=1, device="cpu"
     )
@@ -68,7 +68,7 @@ def test_trainer_dispara_early_stopping(tmp_path: Path) -> None:
 
 
 def test_compute_auc_retorna_neutro_quando_label_unica() -> None:
-    """AUC=0.5 quando a validacao tem apenas uma classe."""
+    """AUC=0.5 quando a validação tem apenas uma classe."""
     probs = torch.tensor([0.1, 0.9])
     labels = torch.tensor([1.0, 1.0], dtype=torch.float32)
     assert compute_auc(probs, labels) == 0.5

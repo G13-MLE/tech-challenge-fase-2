@@ -18,7 +18,7 @@ def make_result(
     hit_rate: float = 0.2,
     k: int = 10,
 ) -> ModelResult:
-    """Cria um ModelResult com metricas padrao para testes."""
+    """Cria um ModelResult com métricas padrão para testes."""
     return ModelResult(
         model_name=name,
         model_role=role,
@@ -40,7 +40,7 @@ class TestModelResult:
     """Testes para a dataclass ModelResult."""
 
     def test_metric_at_k_returns_correct_value(self) -> None:
-        """metric_at_k retorna o valor da metrica no K especificado."""
+        """metric_at_k retorna o valor da métrica no K especificado."""
         result = make_result(precision=0.15, k=10)
         assert result.metric_at_k("precision", 10) == 0.15
 
@@ -50,7 +50,7 @@ class TestModelResult:
         assert result.metric_at_k("precision", 5) == 0.0
 
     def test_harmonic_mean_at_k_computes_correctly(self) -> None:
-        """harmonic_mean_at_k calcula a media harmonica das 4 metricas."""
+        """harmonic_mean_at_k calcula a media harmonica das 4 métricas."""
         result = ModelResult(
             model_name="test",
             model_role="baseline",
@@ -67,7 +67,7 @@ class TestModelResult:
     def test_harmonic_mean_at_k_returns_zero_if_any_is_zero(
         self,
     ) -> None:
-        """harmonic_mean_at_k retorna 0.0 se alguma metrica for zero."""
+        """harmonic_mean_at_k retorna 0.0 se alguma métrica for zero."""
         result = ModelResult(
             model_name="test",
             model_role="baseline",
@@ -96,7 +96,7 @@ class TestModelResult:
         assert abs(result.harmonic_mean_at_k(10) - expected) < 1e-10
 
     def test_to_comparison_dict_includes_all_fields(self) -> None:
-        """to_comparison_dict inclui model, metricas, tempos e h-mean."""
+        """to_comparison_dict inclui model, métricas, tempos e h-mean."""
         result = make_result(name="popularity", k=10)
         d = result.to_comparison_dict()
         assert d["model"] == "popularity"
@@ -114,7 +114,7 @@ class TestModelResult:
             result.model_name = "changed"  # type: ignore[misc]
             raise AssertionError("Deveria ter lancado FrozenInstanceError")
         except AttributeError:
-            pass  # Esperado: dataclass frozen nao permite atribuicao
+            pass  # Esperado: dataclass frozen não permite atribuição
 
 
 class TestRankModels:
@@ -162,7 +162,7 @@ class TestDeclareChampion:
     def test_declare_champion_returns_best_and_runner_up(
         self,
     ) -> None:
-        """declare_champion retorna campeao e segundo colocado."""
+        """declare_champion retorna campeão e segundo colocado."""
         best = make_result(
             name="ease_torch",
             role="champion_candidate",
@@ -189,7 +189,7 @@ class TestDeclareChampion:
         assert runner_up is None
 
     def test_declare_champion_single_model(self) -> None:
-        """declare_champion com unico modelo retorna runner_up None."""
+        """declare_champion com único modelo retorna runner_up None."""
         result = make_result(name="popularity")
         champion, runner_up = declare_champion([result], k=10)
         assert champion is not None

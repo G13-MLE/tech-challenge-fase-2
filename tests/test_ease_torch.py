@@ -49,7 +49,7 @@ def test_fit_creates_item_and_user_mappings() -> None:
 
 
 def test_recommend_returns_items_for_warm_start_user() -> None:
-    """Recomendacoes para usuario conhecido devem retornar itens validos."""
+    """Recomendacoes para usuário conhecido devem retornar itens validos."""
     model = make_trained_model()
     recs = model.recommend("u1", limit=3)
     assert len(recs) == 3
@@ -57,10 +57,10 @@ def test_recommend_returns_items_for_warm_start_user() -> None:
 
 
 def test_recommend_excludes_seen_items() -> None:
-    """Itens ja consumidos pelo usuario nao devem ser recomendados."""
+    """Itens já consumidos pelo usuário não devem ser recomendados."""
     model = make_trained_model()
     seen = {"i1", "i2", "i3"}
-    # Catalogo tem 5 itens; pedir limit=2 garante espaco para itens nao vistos
+    # Catalogo tem 5 itens; pedir limit=2 garante espaco para itens não vistos
     recs = model.recommend("u1", limit=2)
     for item in recs:
         assert item not in seen
@@ -94,7 +94,7 @@ def test_ease_config_validates_lambda_reg_positive() -> None:
 
 
 def test_ease_config_validates_max_items_non_negative() -> None:
-    """max_items deve ser nao negativo."""
+    """max_items deve ser não negativo."""
     try:
         EASEConfig(max_items=-1)
     except ValueError:
@@ -103,14 +103,14 @@ def test_ease_config_validates_max_items_non_negative() -> None:
 
 
 def test_recommend_respects_limit() -> None:
-    """O limite deve ser respeitado no numero de recomendacoes."""
+    """O limite deve ser respeitado no número de recomendações."""
     model = make_trained_model()
     recs = model.recommend("u1", limit=2)
     assert len(recs) == 2
 
 
 def test_popularity_blending_does_not_break_predictions() -> None:
-    """Blending com popularidade nao deve quebrar o pipeline de predicao."""
+    """Blending com popularidade não deve quebrar o pipeline de predição."""
     config = EASEConfig(lambda_reg=250.0, max_items=0, popularity_blending=0.5)
     model = make_trained_model(config=config)
     recs = model.recommend("u1", limit=3)
@@ -118,7 +118,7 @@ def test_popularity_blending_does_not_break_predictions() -> None:
 
 
 def test_b_matrix_is_square_with_item_count() -> None:
-    """B deve ser quadrada com dimensao igual ao numero de itens."""
+    """B deve ser quadrada com dimensao igual ao número de itens."""
     model = make_trained_model()
     assert model._b_matrix is not None
     assert model._b_matrix.shape == (5, 5)
@@ -133,7 +133,7 @@ def test_max_items_filter_limits_catalog_size() -> None:
 
 
 def test_top_item_indices_subset_of_catalog() -> None:
-    """Os indices filtrados devem ser subset dos indices originais."""
+    """Os índices filtrados devem ser subset dos índices originais."""
     model = make_trained_model(config=EASEConfig(max_items=3))
     assert len(model._top_item_indices) == 3
     assert all(0 <= idx < 5 for idx in model._top_item_indices)
@@ -165,7 +165,7 @@ def test_ease_config_device_auto_resolves_to_valid_device() -> None:
 
 
 def test_recommend_batch_returns_recommendations_for_all_users() -> None:
-    """recommend_batch deve retornar recomendacoes para todos os usuarios."""
+    """recommend_batch deve retornar recomendações para todos os usuários."""
     model = make_trained_model()
     user_ids = ["u1", "u2", "u3", "unknown_user"]
     results = model.recommend_batch(user_ids, limit=2)
@@ -176,7 +176,7 @@ def test_recommend_batch_returns_recommendations_for_all_users() -> None:
 
 
 def test_recommend_batch_excludes_seen_items() -> None:
-    """recommend_batch nao deve recomendar itens ja consumidos."""
+    """recommend_batch não deve recomendar itens já consumidos."""
     model = make_trained_model()
     results = model.recommend_batch(["u1"], limit=2)
     seen = {"i1", "i2", "i3"}
@@ -212,10 +212,10 @@ def test_recommend_batch_matches_single_recommend() -> None:
 
 
 # Interacoes com popularidades desbalanceadas para forcar top-3 com
-# indices nao naturalmente ordenados (i5 > i0 ~= i3 > demais).
-# Com max_items=3, os indices filtrados por popularidade decrescente
-# seriam [5, 0, 3] (nao ordenado ascendentemente), expondo o bug do
-# searchsorted em catalogo nao ordenado.
+# índices não naturalmente ordenados (i5 > i0 ~= i3 > demais).
+# Com max_items=3, os índices filtrados por popularidade decrescente
+# seriam [5, 0, 3] (não ordenado ascendentemente), expondo o bug do
+# searchsorted em catalogo não ordenado.
 UNBALANCED_INTERACTIONS: list[Interaction] = [
     ("u1", "i5"),
     ("u2", "i5"),
@@ -247,38 +247,38 @@ def test_top_item_indices_sorted_ascending_when_filtered() -> None:
 
 
 def test_warm_user_scores_nonzero_with_filtered_catalog() -> None:
-    """Usuario com interacoes no catalogo filtrado deve ter scores nao nulos.
+    """Usuario com interações no catalogo filtrado deve ter scores não nulos.
 
-    Com indices nao ordenados, searchsorted falha em localizar itens
+    Com índices não ordenados, searchsorted falha em localizar itens
     consumidos, resultando em user_row todo zero (cold-start para warm).
     """
     model = EASETorchRecommender(EASEConfig(lambda_reg=250.0, max_items=3))
     model.fit(UNBALANCED_INTERACTIONS)
     user_idx = model._user_to_idx["u1"]
     scores = model.compute_user_scores(user_idx)
-    assert scores.abs().sum() > 0, "Scores do usuario warm nao devem ser todos zero"
+    assert scores.abs().sum() > 0, "Scores do usuário warm não devem ser todos zero"
 
 
 def test_exclude_seen_items_works_with_filtered_catalog() -> None:
     """exclude_seen_items deve atribuir -inf a todos os itens vistos.
 
     u1 consumiu i0, i3 e i5, todos presentes no top-3 filtrado; portanto
-    todas as posicoes do vetor de scores devem ser -inf apos a exclusao.
+    todas as posições do vetor de scores devem ser -inf apos a exclusão.
     """
     model = EASETorchRecommender(EASEConfig(lambda_reg=250.0, max_items=3))
     model.fit(UNBALANCED_INTERACTIONS)
     user_idx = model._user_to_idx["u1"]
     scores = torch.ones(3, dtype=torch.float64)
     model.exclude_seen_items(user_idx, scores)
-    assert torch.all(scores == float("-inf")), f"seen items nao excluidos: {scores}"
+    assert torch.all(scores == float("-inf")), f"seen items não excluidos: {scores}"
 
 
 def test_recommend_excludes_seen_items_with_filtered_catalog() -> None:
-    """recommend nao deve recomendar itens ja consumidos com catalogo filtrado.
+    """recommend não deve recomendar itens já consumidos com catalogo filtrado.
 
     Cenario com 6 itens onde o top-3 filtrado (por popularidade) e
-    {i0, i3, i5}. O usuario u1 consumiu apenas i0 (no catalogo filtrado),
-    deixando i3 e i5 como nao consumidos; a recomendacao deve vir desse
+    {i0, i3, i5}. O usuário u1 consumiu apenas i0 (no catalogo filtrado),
+    deixando i3 e i5 como não consumidos; a recomendação deve vir desse
     conjunto, nunca de i0.
     """
     interactions: list[Interaction] = [
@@ -301,4 +301,4 @@ def test_recommend_excludes_seen_items_with_filtered_catalog() -> None:
     recs = model.recommend("u1", limit=2)
     seen = {"i0"}
     for item in recs:
-        assert item not in seen, f"item ja consumido recomendado: {item}"
+        assert item not in seen, f"item já consumido recomendado: {item}"

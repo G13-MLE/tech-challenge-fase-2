@@ -1,14 +1,14 @@
-"""Pipeline de avaliacao dos modelos baseline com tracking MLflow.
+"""Pipeline de avaliação dos modelos baseline com tracking MLflow.
 
 Orquestra o fluxo completo:
-1. Carrega configuracao e ambiente
-2. Carrega dados de interacoes
-3. Divide em treino/validacao/teste (split cronologico global 70/15/15)
+1. Carrega configuração e ambiente
+2. Carrega dados de interações
+3. Divide em treino/validação/teste (split cronológico global 70/15/15)
 4. Treina e avalia todos os modelos (popularity, recent_items, random,
    torch_embedding, neural_ncf, ease_torch, item_knn, logistic_regression)
-5. Registra hiperparametros, metricas e artefatos no MLflow
-6. Salva resultados comparativos com criterio de campeao
-7. Gera relatorio markdown automatico
+5. Registra hiperparametros, métricas e artefatos no MLflow
+6. Salva resultados comparativos com criterio de campeão
+7. Gera relatório markdown automático
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ K_VALUES = (5, 10, 20)
 CHAMPION_K = 10
 CHAMPION_MIN_RELATIVE_GAIN = 0.01
 
-# Tag de papel de cada modelo na comparacao
+# Tag de papel de cada modelo na comparação
 MODEL_ROLES: dict[str, str] = {
     ModelType.POPULARITY.value: "baseline",
     ModelType.RECENT_ITEMS.value: "baseline",
@@ -82,7 +82,7 @@ MODEL_ROLES: dict[str, str] = {
     ModelType.EASE_TORCH.value: "champion_candidate",
 }
 
-# Hiperparametros especificos do EASE^ para o candidato a campeao
+# Hiperparametros especificos do EASE^ para o candidato a campeão
 EASE_HYPERPARAMS: dict[str, Any] = {
     "lambda_reg": 250.0,
     "max_items": 20000,
@@ -154,21 +154,21 @@ def build_input_data_summary(
 
 
 def load_interactions(data_dir: str | Path) -> pd.DataFrame:
-    """Carrega interacoes do dataset RetailRocket ou da saida preprocessada.
+    """Carrega interações do dataset RetailRocket ou da saída preprocessada.
 
-    Aceita CSV (data/raw/) ou Parquet (data/processed/, ja filtrado pelo
+    Aceita CSV (data/raw/) ou Parquet (data/processed/, já filtrado pelo
     stage preprocess). Em data/processed procura primeiro por
     `interactions.parquet` para reusar o catalogo filtrado (top-N itens +
-    usuarios ativos) e manter consistencia com o pipeline DVC.
+    usuários ativos) e manter consistencia com o pipeline DVC.
 
     Args:
-        data_dir: Caminho para o diretorio de dados (raw ou processed).
+        data_dir: Caminho para o diretório de dados (raw ou processed).
 
     Returns:
-        DataFrame com colunas minimimas de interacao.
+        DataFrame com colunas minimimas de interação.
 
     Raises:
-        FileNotFoundError: Se nenhum arquivo de interacoes for encontrado.
+        FileNotFoundError: Se nenhum arquivo de interações for encontrado.
     """
     data_path = Path(data_dir)
     parquet_files = list(data_path.glob("*.parquet"))
@@ -210,7 +210,7 @@ def _normalize_interactions_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Normaliza nomes de colunas de user/item/timestamp para o pipeline.
 
     Aceita tanto o esquema bruto do RetailRocket (`visitorid`/`itemid`/
-    `timestamp`) quanto o esquema ja preprocessado (`user_id`/`item_id`/
+    `timestamp`) quanto o esquema já preprocessado (`user_id`/`item_id`/
     `event_time`/`event_weight`).
     """
     possible_user_cols = ["visitorid", "user_id", "userId", "user"]
@@ -234,14 +234,14 @@ def _normalize_interactions_columns(df: pd.DataFrame) -> pd.DataFrame:
             user_col = df.columns[0]
             item_col = df.columns[1]
             logger.info(
-                "Colunas nao identificadas, usando %s como user e %s como item",
+                "Colunas não identificadas, usando %s como user e %s como item",
                 user_col,
                 item_col,
             )
         else:
             msg = (
-                f"Nao foi possivel identificar colunas de "
-                f"interacao em {df.columns.tolist()}"
+                f"Nao foi possível identificar colunas de "
+                f"interação em {df.columns.tolist()}"
             )
             raise ValueError(msg)
 
@@ -272,7 +272,7 @@ def _normalize_interactions_columns(df: pd.DataFrame) -> pd.DataFrame:
     result["item_id"] = result["item_id"].astype(str)
 
     # Remove duplicatas (mesmo user-item pode ter múltiplas interações)
-    # mantendo a primeira ocorrencia cronologica se timestamp presente
+    # mantendo a primeira ocorrencia cronológica se timestamp presente
     if "timestamp" in result.columns:
         result = result.sort_values("timestamp").drop_duplicates(
             subset=["user_id", "item_id"], keep="first"
@@ -295,35 +295,35 @@ def temporal_holdout_split(
     random_seed: int = 42,
     timestamp_col: str = "timestamp",
 ) -> tuple[list[Interaction], dict[str, set[str]], dict[str, list[str]]]:
-    """Divide interacoes em treino/validacao/teste com corte cronologico global.
+    """Divide interações em treino/validação/teste com corte cronológico global.
 
-    Usa split cronologico 3-way (70/15/15 por padrao) conforme o plano da
-    issue #15. O conjunto de validacao fica disponivel para selecao de
-    hiperparametros; a avaliacao final usa o conjunto de teste.
+    Usa split cronológico 3-way (70/15/15 por padrão) conforme o plano da
+    issue #15. O conjunto de validação fica disponível para seleção de
+    hiperparametros; a avaliação final usa o conjunto de teste.
 
     Mantem compatibilidade com a assinatura anterior.
 
     Args:
         interactions_df: DataFrame com colunas 'user_id', 'item_id' e
             timestamp_col.
-        test_ratio: Fracao das interacoes mais recentes para teste.
-        random_seed: Seed mantido por compatibilidade (nao usado no split
-            cronologico deterministico).
+        test_ratio: Fracao das interações mais recentes para teste.
+        random_seed: Seed mantido por compatibilidade (não usado no split
+            cronológico deterministico).
         timestamp_col: Nome da coluna de timestamp para ordenacao.
 
     Returns:
         Tupla com:
         - train_interactions: lista de tuplas (user_id, item_id) de treino
         - ground_truth: mapeamento user_id -> conjunto de itens relevantes
-        - all_items_by_user: mapeamento user_id -> lista de itens do usuario
+        - all_items_by_user: mapeamento user_id -> lista de itens do usuário
     """
     _ = random_seed
     if timestamp_col not in interactions_df.columns:
         msg = (
             f"Coluna de timestamp '{timestamp_col}' ausente; o split "
-            "cronologico requer uma coluna de timestamp. Fornea uma "
-            "coluna de timestamp no DataFrame ou use uma estrategia de "
-            "divisao nao cronologica."
+            "cronológico requer uma coluna de timestamp. Fornea uma "
+            "coluna de timestamp no DataFrame ou use uma estratégia de "
+            "divisao não cronológica."
         )
         raise ValueError(msg)
     val_ratio = test_ratio
@@ -340,7 +340,7 @@ def temporal_holdout_split(
 
 
 def group_items_by_user(df: pd.DataFrame) -> dict[str, list[str]]:
-    """Agrupa itens por usuario mantendo a ordem de ocorrencia."""
+    """Agrupa itens por usuário mantendo a ordem de ocorrencia."""
     grouped: dict[str, list[str]] = {}
     for row in df.itertuples(index=False):
         grouped.setdefault(str(row.user_id), []).append(str(row.item_id))
@@ -353,18 +353,18 @@ def evaluate_baselines(  # noqa: PLR0913
     k_values: tuple[int, ...] = K_VALUES,
     random_seed: int = 42,
 ) -> tuple[list[ModelResult], dict[str, Any]]:
-    """Treina e avalia todos os modelos baseline e o candidato a campeao.
+    """Treina e avalia todos os modelos baseline e o candidato a campeão.
 
     Args:
         train_interactions: Interacoes de treino.
-        ground_truth: Itens relevantes por usuario para avaliacao.
-        k_values: Valores de K para computar metricas.
+        ground_truth: Itens relevantes por usuário para avaliação.
+        k_values: Valores de K para computar métricas.
         random_seed: Seed para reprodutibilidade.
 
     Returns:
         Tupla com:
         - Lista de ModelResult com resultados estruturados por modelo.
-        - Dicionario mapeando nome do modelo para instancia treinada.
+        - Dicionario mapeando nome do modelo para instância treinada.
     """
     _ = random_seed
     factory = RecommenderModelFactory.default()
@@ -410,7 +410,7 @@ def evaluate_baselines(  # noqa: PLR0913
 
 
 def build_model_config(model_name: str, k_values: tuple[int, ...]) -> ModelConfig:
-    """Constroi a configuracao apropriada para cada modelo."""
+    """Constrói a configuração apropriada para cada modelo."""
     if model_name == ModelType.EASE_TORCH.value:
         return ModelConfig(
             model_type=model_name,
@@ -436,7 +436,7 @@ def time_fit(model: Any, interactions: list[Interaction]) -> float:
 def time_recommend(
     model: Any, ground_truth: dict[str, set[str]], limit: int
 ) -> tuple[dict[str, list[str]], float]:
-    """Mede o tempo total de inferencia e retorna recomendacoes."""
+    """Mede o tempo total de inferencia e retorna recomendações."""
     t0 = time.perf_counter()
     recommended: dict[str, list[str]] = {}
     for user_id in ground_truth:
@@ -445,15 +445,15 @@ def time_recommend(
 
 
 def encode_role(role: str) -> int:
-    """Codifica o papel do modelo como inteiro para serializacao no MLflow."""
+    """Codifica o papel do modelo como inteiro para serialização no MLflow."""
     mapping = {"baseline": 0, "baseline_neural": 1, "champion_candidate": 2}
     return mapping.get(role, 0)
 
 
 def sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
-    """Sanitiza nomes de metricas para compatibilidade com MLflow.
+    """Sanitiza nomes de métricas para compatibilidade com MLflow.
 
-    MLflow nao aceita '@' em nomes de metricas; substitui por '_at_'.
+    MLflow não aceita '@' em nomes de métricas; substitui por '_at_'.
     """
     return {key.replace("@", "_at_"): value for key, value in metrics.items()}
 
@@ -554,10 +554,10 @@ def run_baseline_pipeline(  # noqa: PLR0913
                 }
             )
 
-            # Log de informacoes de sistema
+            # Log de informações de sistema
             log_system_info(random_seed)
 
-            # Log de metricas (sanitiza nomes para MLflow: '@' -> '_at_')
+            # Log de métricas (sanitiza nomes para MLflow: '@' -> '_at_')
             log_metrics(sanitize_metric_names(metrics))
 
             # Log do resumo dos dados de entrada como artefato
@@ -573,7 +573,7 @@ def run_baseline_pipeline(  # noqa: PLR0913
             mlflow.set_tag("model_role", result.model_role)
             mlflow.set_tag("random_seed", str(random_seed))
 
-            # Salva e log graficos de metricas
+            # Salva e log graficos de métricas
             metrics_chart_path = reports_dir / f"metrics_{result.model_name}.png"
             save_metrics_bar_chart(
                 metrics,
@@ -605,7 +605,7 @@ def run_baseline_pipeline(  # noqa: PLR0913
         comparison_data.append(result.to_comparison_dict())
         logger.info("Run MLflow registrada para %s", result.model_name)
 
-    # Constroi dict de metricas por modelo para grafico comparativo
+    # Constrói dict de métricas por modelo para grafico comparativo
     all_metrics_dict = {r.model_name: r.metrics for r in model_results}
 
     # Salva e log grafico comparativo
@@ -633,11 +633,11 @@ def run_baseline_pipeline(  # noqa: PLR0913
     comparison_df.to_csv(comparison_path, index=False)
     logger.info("Comparativo salvo em: %s", comparison_path)
 
-    # Declara o campeao com base no criterio de media harmonica em K=10
+    # Declara o campeão com base no criterio de media harmonica em K=10
     champion, runner_up = declare_champion(model_results, k=CHAMPION_K)
     log_champion_summary(champion, runner_up)
 
-    # Gera relatorio markdown automatico
+    # Gera relatório markdown automático
     report_content = generate_markdown_report(
         results=model_results,
         k_values=k_values,
@@ -660,7 +660,7 @@ def run_baseline_pipeline(  # noqa: PLR0913
 
     # Log resumo
     logger.info(
-        "Pipeline concluida com %d modelos avaliados",
+        "Pipeline concluída com %d modelos avaliados",
         len(model_results),
     )
     for result in model_results:
@@ -681,18 +681,18 @@ def run_baseline_pipeline(  # noqa: PLR0913
 def log_champion_summary(
     champion: ModelResult | None, runner_up: ModelResult | None
 ) -> None:
-    """Registra no log o resumo do campeao declarado."""
+    """Registra no log o resumo do campeão declarado."""
     if champion is None:
-        logger.warning("Nenhum modelo avaliado; campeao nao declarado.")
+        logger.warning("Nenhum modelo avaliado; campeão não declarado.")
         return
-    logger.info("Campeao declarado: %s", champion.model_name)
+    logger.info("Campeão declarado: %s", champion.model_name)
     if runner_up is not None:
         logger.info("Segundo colocado: %s", runner_up.model_name)
     if champion.model_name == ModelType.EASE_TORCH.value:
-        logger.info("EASE^ confirmado como campeao por simplicidade e performance.")
+        logger.info("EASE^ confirmado como campeão por simplicidade e performance.")
     else:
         logger.info(
-            "EASE^ nao venceu; modelo %s sera o principal do projeto.",
+            "EASE^ não venceu; modelo %s sera o principal do projeto.",
             champion.model_name,
         )
 

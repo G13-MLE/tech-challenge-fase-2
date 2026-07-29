@@ -42,14 +42,14 @@ def make_logreg(
 
 
 def test_item_knn_fit_builds_knn_index() -> None:
-    """O treino deve construir o indice KNN."""
+    """O treino deve construir o índice KNN."""
     model = make_item_knn()
     assert model._knn is not None
     assert model._item_vectors is not None
 
 
 def test_item_knn_recommend_returns_items_for_warm_user() -> None:
-    """Recomendacoes para usuario conhecido devem retornar itens validos."""
+    """Recomendacoes para usuário conhecido devem retornar itens validos."""
     model = make_item_knn()
     recs = model.recommend("u1", limit=3)
     assert len(recs) == 3
@@ -57,10 +57,10 @@ def test_item_knn_recommend_returns_items_for_warm_user() -> None:
 
 
 def test_item_knn_recommend_excludes_seen_items() -> None:
-    """Itens ja consumidos nao devem ser recomendados."""
+    """Itens já consumidos não devem ser recomendados."""
     model = make_item_knn()
     seen = {"i1", "i2", "i3"}
-    # Catalogo tem 5 itens; pedir limit=2 garante itens nao vistos
+    # Catalogo tem 5 itens; pedir limit=2 garante itens não vistos
     recs = model.recommend("u1", limit=2)
     for item in recs:
         assert item not in seen
@@ -91,7 +91,7 @@ def test_logreg_fit_builds_model() -> None:
 
 
 def test_logreg_recommend_returns_items_for_warm_user() -> None:
-    """Recomendacoes para usuario conhecido devem retornar itens validos."""
+    """Recomendacoes para usuário conhecido devem retornar itens validos."""
     model = make_logreg()
     recs = model.recommend("u1", limit=3)
     assert len(recs) == 3
@@ -99,10 +99,10 @@ def test_logreg_recommend_returns_items_for_warm_user() -> None:
 
 
 def test_logreg_recommend_excludes_seen_items() -> None:
-    """Itens ja consumidos nao devem ser recomendados."""
+    """Itens já consumidos não devem ser recomendados."""
     model = make_logreg()
     seen = {"i1", "i2", "i3"}
-    # Catalogo tem 5 itens; pedir limit=2 garante itens nao vistos
+    # Catalogo tem 5 itens; pedir limit=2 garante itens não vistos
     recs = model.recommend("u1", limit=2)
     for item in recs:
         assert item not in seen
@@ -127,17 +127,17 @@ def test_logreg_recommend_before_fit_raises() -> None:
 
 
 def test_logreg_recommend_respects_limit() -> None:
-    """O limite deve ser respeitado no numero de recomendacoes."""
+    """O limite deve ser respeitado no número de recomendações."""
     model = make_logreg()
     recs = model.recommend("u1", limit=2)
     assert len(recs) == 2
 
 
 def test_sample_negatives_exclude_positives() -> None:
-    """Negativos amostrados nao devem incluir itens ja consumidos pelo usuario.
+    """Negativos amostrados não devem incluir itens já consumidos pelo usuário.
 
-    O sampler do LogisticRegression deve rejeitar candidatos que sao
-    positivos do usuario, evitando ruido de label (como fazem NCF e BPR).
+    O sampler do LogisticRegression deve rejeitar candidatos que são
+    positivos do usuário, evitando ruido de label (como fazem NCF e BPR).
     """
     interactions: list[Interaction] = [
         ("u1", "i1"),
@@ -155,16 +155,16 @@ def test_sample_negatives_exclude_positives() -> None:
     assert len(negatives) > 0, "Deve amostrar negativos"
     for user_idx, item_idx in negatives:
         assert item_idx not in model._seen_items.get(user_idx, set()), (
-            f"negativo ({user_idx}, {item_idx}) e um item positivo do usuario"
+            f"negativo ({user_idx}, {item_idx}) e um item positivo do usuário"
         )
 
 
 def test_sample_negatives_all_items_consumed_still_valid() -> None:
-    """Usuario que consumiu todos os itens nao deve gerar negativos invalidos.
+    """Usuario que consumiu todos os itens não deve gerar negativos invalidos.
 
-    Com catalogo pequeno onde um usuario consumiu todos os itens, o
+    Com catalogo pequeno onde um usuário consumiu todos os itens, o
     sampler deve evitar gerar (user, item) que seja positivo; nenhum
-    negativo valido existe para esse usuario, entao nenhum negativo deve
+    negativo valido existe para esse usuário, entao nenhum negativo deve
     conter um item positivo.
     """
     interactions: list[Interaction] = [
@@ -181,5 +181,5 @@ def test_sample_negatives_all_items_consumed_still_valid() -> None:
     negatives = model.sample_negatives(len(positives))
     for user_idx, item_idx in negatives:
         assert item_idx not in model._seen_items.get(user_idx, set()), (
-            f"negativo ({user_idx}, {item_idx}) e um item positivo do usuario"
+            f"negativo ({user_idx}, {item_idx}) e um item positivo do usuário"
         )

@@ -11,11 +11,11 @@ paths:
   metrics: metrics/recommendation_metrics.json
 
 # Pipeline configurado para o dataset RetailRocket filtrado aos top-10000
-# itens mais populares e usuarios com >=5 interacoes. Decisao de design
+# itens mais populares e usuários com >=5 interações. Decisao de design
 # documentada (literatura de recsys para datasets esparsos): reduz o
-# catalogo de 235k para ~10k itens (tratavel em 16GB RAM, viabiliza
-# ItemKNN/LogReg/EASE^) e foca em usuarios com historico suficiente
-# para personalizacao. Metricas esperadas: hit_rate@10 ~ 0.05-0.20.
+# catalogo de 235k para ~10k itens (tratável em 16GB RAM, viabiliza
+# ItemKNN/LogReg/EASE^) e foca em usuários com histórico suficiente
+# para personalização. Metricas esperadas: hit_rate@10 ~ 0.05-0.20.
 # sample_size = 0 desativa a amostragem (usar o dataset real).
 preprocess:
   sample_size: 0
@@ -34,7 +34,7 @@ features:
 
 # Hiperparametros ajustados para treino do NCF no catalogo filtrado (10k itens).
 # epoch=20 com patience=5 + early stopping; neg_samples=4 aumenta o sinal
-# negativo por usuario (catalogo 10k torna o ratio viavel).
+# negativo por usuário (catalogo 10k torna o ratio viável).
 training:
   batch_size: 1024
   epochs: 20
@@ -45,7 +45,7 @@ training:
   patience: 5
   min_delta: 0.0001
 
-# Avaliacao Top-K em 1000 usuarios (amostra representativa do conjunto de teste).
+# Avaliacao Top-K em 1000 usuários (amostra representativa do conjunto de teste).
 evaluation:
   top_k: 10
   max_users: 1000

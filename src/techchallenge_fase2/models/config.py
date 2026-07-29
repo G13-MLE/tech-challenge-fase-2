@@ -36,9 +36,9 @@ class ModelConfig:
         num_items: Number of encoded items for neural models.
         embedding_dim: Embedding vector size for neural models.
         lambda_reg: Regularizacao L2 do EASE^ (faixa tipica 1e2 a 1e4).
-        max_items: Numero maximo de itens considerados no catalogo do EASE^.
+        max_items: Numero máximo de itens considerados no catalogo do EASE^.
             Use 0 para catalogo completo.
-        batch_size: Tamanho do bloco de usuarios para predicao do EASE^.
+        batch_size: Tamanho do bloco de usuários para predição do EASE^.
         popularity_blending: Peso de popularidade adicionado ao score do EASE^.
         device: Dispositivo do EASE^ ("auto" detecta MPS/CUDA, "cpu" força CPU).
     """
@@ -70,22 +70,22 @@ class ModelConfig:
         if self.lambda_reg <= 0:
             raise ValueError("lambda_reg deve ser positivo")
         if self.max_items < 0:
-            raise ValueError("max_items deve ser nao negativo")
+            raise ValueError("max_items deve ser não negativo")
         if self.batch_size < 1:
             raise ValueError("batch_size deve ser positivo")
         if self.popularity_blending < 0:
-            raise ValueError("popularity_blending deve ser nao negativo")
+            raise ValueError("popularity_blending deve ser não negativo")
         if self.device not in ("auto", "cpu"):
             raise ValueError("device deve ser 'auto' ou 'cpu'")
 
     def neural_config(self) -> "NCFConfig":
-        """Constroi a configuracao do NCF a partir deste ModelConfig.
+        """Constrói a configuração do NCF a partir deste ModelConfig.
 
         Returns:
             NCFConfig valido para instanciar o modelo neural (GMF + MLP).
 
         Raises:
-            ValueError: Quando num_users/num_items nao sao positivos.
+            ValueError: Quando num_users/num_items não são positivos.
         """
         from techchallenge_fase2.models.ncf import (
             NCFConfig,
@@ -100,7 +100,7 @@ class ModelConfig:
         )
 
     def ncf_training_config(self) -> "NCFTrainingConfig":
-        """Constroi a configuracao de treino inline do NCF.
+        """Constrói a configuração de treino inline do NCF.
 
         Returns:
             NCFTrainingConfig para treinar o NCF dentro do pipeline
@@ -118,7 +118,7 @@ class ModelConfig:
         )
 
     def embedding_training_config(self) -> "EmbeddingTrainingConfig":
-        """Constroi a configuracao de treino inline do TorchEmbedding.
+        """Constrói a configuração de treino inline do TorchEmbedding.
 
         Returns:
             EmbeddingTrainingConfig para treinar o modelo de embeddings
@@ -137,7 +137,7 @@ class ModelConfig:
         )
 
     def ease_config(self) -> "EASEConfig":
-        """Constroi a configuracao do EASE^ a partir deste ModelConfig.
+        """Constrói a configuração do EASE^ a partir deste ModelConfig.
 
         Returns:
             EASEConfig valido para instanciar o EASE^ em PyTorch.

@@ -1,7 +1,7 @@
 """Tests for the Model Registry register pipeline (Discovery + Staging).
 
-Cobra a logica de descoberta do campeao e empacotamento sem bater em
-MLflow server real: mockamos o ``MlflowClient`` onde necessario.
+Cobra a lógica de descoberta do campeão e empacotamento sem bater em
+MLflow server real: mockamos o ``MlflowClient`` onde necessário.
 """
 
 from __future__ import annotations
@@ -282,7 +282,7 @@ def test_discover_champion_run_skips_runs_without_artifact() -> None:
 def test_discover_champion_run_raises_for_missing_experiment() -> None:
     """Missing experiment name raises a clear RuntimeError."""
     client = _FakeClient(experiment_id="x", runs=[])
-    with pytest.raises(RuntimeError, match="nao encontrado"):
+    with pytest.raises(RuntimeError, match="não encontrado"):
         discover_champion_run(client, "missing-experiment")
 
 

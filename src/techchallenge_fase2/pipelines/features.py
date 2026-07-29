@@ -151,11 +151,11 @@ def run(params: PipelineParams) -> None:
     logger.info("=" * 70)
     logger.info("[STAGE 2/4] FEATURES - engenharia de features e split temporal")
     interactions = load_interactions(params.paths.processed_interactions)
-    logger.info("  interacoes carregadas: %d linhas", len(interactions))
+    logger.info("  interações carregadas: %d linhas", len(interactions))
     sessions = add_session_features(interactions, params.features.session_gap_minutes)
     encoded, mappings = add_encoded_ids(sessions)
     logger.info(
-        "  usuarios codificados: %d | itens codificados: %d",
+        "  usuários codificados: %d | itens codificados: %d",
         len(mappings["user_ids"]),
         len(mappings["item_ids"]),
     )
@@ -172,7 +172,7 @@ def run(params: PipelineParams) -> None:
         len(validation),
         len(test),
     )
-    logger.info("[STAGE 2/4] FEATURES concluido")
+    logger.info("[STAGE 2/4] FEATURES concluído")
     logger.info("=" * 70)
 
 

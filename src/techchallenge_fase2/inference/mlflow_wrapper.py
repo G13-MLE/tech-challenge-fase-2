@@ -2,8 +2,8 @@
 
 Empacota qualquer ``RecommenderModel`` do projeto como um modelo
 ``mlflow.pyfunc.PythonModel`` para registro no Model Registry. A
-serializacao usa pickle padrao (dependencias sklearn/scipy/torch ja
-estao no ambiente), preservando mappings e estado interno.
+serialização usa pickle padrão (dependências sklearn/scipy/torch já
+estão no ambiente), preservando mappings e estado interno.
 
 Contrato do ``predict``:
 - Entrada: DataFrame com coluna ``user_id`` (str) e opcional ``limit`` (int).
@@ -39,7 +39,7 @@ class RecommenderPythonModel(mlflow.pyfunc.PythonModel):
         """Carrega o recomendador a partir do artefato pickle.
 
         Args:
-            context: Contexto MLflow com o dicionario de artefatos.
+            context: Contexto MLflow com o dicionário de artefatos.
         """
         pickle_path = Path(context.artifacts[ARTIFACT_KEY])
         self._recommender: RecommenderModel = deserialize_recommender(pickle_path)
@@ -50,18 +50,18 @@ class RecommenderPythonModel(mlflow.pyfunc.PythonModel):
         model_input: pd.DataFrame,
         params: dict[str, Any] | None = None,
     ) -> pd.DataFrame:
-        """Gera recomendacoes em lote a partir de um DataFrame.
+        """Gera recomendações em lote a partir de um DataFrame.
 
         Args:
-            context: Contexto MLflow (nao usado diretamente).
+            context: Contexto MLflow (não usado diretamente).
             model_input: DataFrame com coluna ``user_id`` e opcional
                 ``limit``. Se ``limit`` estiver ausente, usa o default
                 do modelo.
-            params: Parametros opcionais (nao usados).
+            params: Parametros opcionais (não usados).
 
         Returns:
             DataFrame com colunas ``user_id`` (str) e
-            ``recommendations`` (list[str]) por usuario.
+            ``recommendations`` (list[str]) por usuário.
         """
         del context, params
         frame = normalize_input(model_input)
@@ -124,7 +124,7 @@ def deserialize_recommender(path: Path) -> RecommenderModel:
         obj = pickle.load(handle)  # noqa: S301
     if not isinstance(obj, RecommenderModel):
         msg = (
-            f"Artefato pickle nao e um RecommenderModel: {type(obj).__name__}. "
+            f"Artefato pickle não e um RecommenderModel: {type(obj).__name__}. "
             "Verifique o empacotamento do modelo."
         )
         raise TypeError(msg)

@@ -16,12 +16,12 @@ dvc.yaml    — Pipeline reprodutível
 ```
 
 ## Fluxo do Model Registry (issue #16)
-O campeao de `make compare-models` (maior `harmonic_mean_at_10`) e
+O campeão de `make compare-models` (maior `harmonic_mean_at_10`) e
 registrado no MLflow Model Registry seguindo Staging -> Production:
-- `make register` - descobre o campeao, empacota como pyfunc e registra em Staging.
+- `make register` - descobre o campeão, empacota como pyfunc e registra em Staging.
 - `make promote-dry-run` - avalia Staging vs `models/model_comparison.csv` sem promover.
-- `make promote` - valida Staging (tolerancia `MLFLOW_REGISTRY_STAGING_TOLERANCE`)
-  e promove para Production, arquivando versoes anteriores.
+- `make promote` - valida Staging (tolerância `MLFLOW_REGISTRY_STAGING_TOLERANCE`)
+  e promove para Production, arquivando versões anteriores.
 - `make inference` - carrega de Production via CLI para recomendar por `user_id`.
 
 Codigo: `src/techchallenge_fase2/inference/` (pyfunc wrapper + CLI de
