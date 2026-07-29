@@ -53,17 +53,17 @@ def filter_catalog(
     frame: pd.DataFrame, max_items: int, min_interactions_per_user: int
 ) -> pd.DataFrame:
     """Filtra o catalogo para os top-`max_items` itens mais populares e mantem
-    apenas usuarios com pelo menos `min_interactions_per_user` interacoes.
+    apenas usuários com pelo menos `min_interactions_per_user` interações.
 
     Decisao de design documentada da literatura de recsys para datasets
-    esparsos: reduz o catalogo de 235k para ~10k itens (tornando tratavel o
+    esparsos: reduz o catalogo de 235k para ~10k itens (tornando tratável o
     problema e viaveis os modelos ItemKNN/LogReg/EASE^ em 16GB) e foca nos
-    usuarios com historico suficiente para personalizacao. Valores <=0
+    usuários com histórico suficiente para personalização. Valores <=0
     desativam o filtro respectivo.
 
-    A filtragem itera ate convergencia para garantir que apos remover itens
-    pouco populares os usuarios que so interagiram com eles tambem sejam
-    removidos, evitando usuarios sem nenhum item no catalogo final.
+    A filtragem itera até convergência para garantir que apos remover itens
+    pouco populares os usuários que só interagiram com eles também sejam
+    removidos, evitando usuários sem nenhum item no catalogo final.
     """
     filtered = frame
     while True:
@@ -110,7 +110,7 @@ def run(params: PipelineParams) -> None:
     validate_columns(events)
     logger.info("  eventos bruto carregados: %d linhas", len(events))
     logger.info(
-        "  distribuicao de eventos: %s",
+        "  distribuição de eventos: %s",
         events["event"].value_counts().to_dict(),
     )
     sampled = apply_sample(
@@ -138,7 +138,7 @@ def run(params: PipelineParams) -> None:
     )
     if len(filtered) != len(interactions):
         logger.info(
-            "  filtro de catalogo aplicado: %d -> %d interacoes "
+            "  filtro de catalogo aplicado: %d -> %d interações "
             "(max_items=%d, min_interactions_per_user=%d)",
             len(interactions),
             len(filtered),
@@ -148,16 +148,16 @@ def run(params: PipelineParams) -> None:
         interactions = filtered
     save_frame(interactions, params.paths.processed_interactions)
     logger.info(
-        "  interacoes normalizadas salvas: %d linhas -> %s",
+        "  interações normalizadas salvas: %d linhas -> %s",
         len(interactions),
         params.paths.processed_interactions,
     )
     logger.info(
-        "  usuarios unicos=%d itens unicos=%d",
+        "  usuários únicos=%d itens únicos=%d",
         interactions["visitorid"].nunique(),
         interactions["itemid"].nunique(),
     )
-    logger.info("[STAGE 1/4] PREPROCESS concluido")
+    logger.info("[STAGE 1/4] PREPROCESS concluído")
     logger.info("=" * 70)
 
 

@@ -1,7 +1,7 @@
-"""Testes da integracao MLflow do estagio de treino (pipeline.training).
+"""Testes da integração MLflow do estagio de treino (pipeline.training).
 
-Os testes mockam o modulo ``mlflow`` para evitar dependencia de servidor
-real e validar que os utilitarios de tracking sao chamados corretamente.
+Os testes mockam o módulo ``mlflow`` para evitar dependência de servidor
+real e validar que os utilitarios de tracking são chamados corretamente.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from techchallenge_fase2.training.trainer import TrainingHistory
 
 
 def build_params(tmp_path: Path) -> PipelineParams:
-    """Constroi PipelineParams valido apontando para tmp_path."""
+    """Constrói PipelineParams valido apontando para tmp_path."""
     return PipelineParams(
         paths=PathParams(
             raw_events=tmp_path / "raw_events.csv",
@@ -64,7 +64,7 @@ def build_params(tmp_path: Path) -> PipelineParams:
 
 
 def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
-    """Escreve um parquet minimo de features com colunas user_index/item_index."""
+    """Escreve um parquet mínimo de features com colunas user_index/item_index."""
     rows: list[dict[str, int]] = []
     for user in range(num_users):
         for item in range(num_items):
@@ -73,7 +73,7 @@ def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
 
 
 def write_mappings(path: Path, users: int = 4, items: int = 4) -> None:
-    """Escreve o arquivo mappings.json minimo consumido pelo treino."""
+    """Escreve o arquivo mappings.json mínimo consumido pelo treino."""
     path.write_text(
         json.dumps(
             {
@@ -98,13 +98,13 @@ def setup_training_env(tmp_path: Path) -> tuple[PipelineParams, Path]:
 
 
 class TestBuildTrainingHyperparameters:
-    """Valida construcao do dict de hiperparametros para o MLflow."""
+    """Valida construção do dict de hiperparametros para o MLflow."""
 
     @staticmethod
     def test_inclui_hiperparametros_chave(
         setup_training_env: tuple[PipelineParams, Path],
     ) -> None:
-        """Hiperparametros essenciais do NCF estao presentes no dict."""
+        """Hiperparametros essenciais do NCF estão presentes no dict."""
         params, _ = setup_training_env
         hyperparams = training_module.build_training_hyperparameters(
             params, users=4, items=4, dataset_version="abc12345"
@@ -123,12 +123,12 @@ class TestBuildTrainingHyperparameters:
     def test_conta_interacoes_de_treino_e_validacao(
         setup_training_env: tuple[PipelineParams, Path],
     ) -> None:
-        """Numero de interacoes reflete o que foi escrito nos parquets."""
+        """Numero de interações reflete o que foi escrito nos parquets."""
         params, _ = setup_training_env
         hyperparams = training_module.build_training_hyperparameters(
             params, users=4, items=4, dataset_version="unknown"
         )
-        # 4 usuarios x 4 itens = 16 interacoes em cada frame
+        # 4 usuários x 4 itens = 16 interações em cada frame
         assert hyperparams["num_train_interactions"] == 16
         assert hyperparams["num_validation_interactions"] == 16
 
@@ -140,7 +140,7 @@ class TestBuildInputSummary:
     def test_calcula_sparsity_e_contagens(
         setup_training_env: tuple[PipelineParams, Path],
     ) -> None:
-        """Sparsity e contagens sao derivadas de users, items e interacoes."""
+        """Sparsity e contagens são derivadas de users, items e interações."""
         params, _ = setup_training_env
         summary = training_module.build_input_summary(
             params, users=4, items=4, dataset_version="abc12345"
@@ -149,17 +149,17 @@ class TestBuildInputSummary:
         assert summary["num_items"] == 4
         assert summary["num_train_interactions"] == 16
         assert summary["num_validation_interactions"] == 16
-        # 16 interacoes / (4 * 4) = 1.0 -> sparsity = 0.0
+        # 16 interações / (4 * 4) = 1.0 -> sparsity = 0.0
         assert summary["sparsity"] == pytest.approx(0.0)
         assert summary["dataset_version"] == "abc12345"
 
 
 class TestSummarizeHistory:
-    """Valida a agregacao do historico de treino em metricas finais."""
+    """Valida a agregação do histórico de treino em métricas finais."""
 
     @staticmethod
     def test_extrai_metricas_finais_do_historico() -> None:
-        """Metricas finais refletem o ultimo valor e o melhor AUC."""
+        """Metricas finais refletem o último valor e o melhor AUC."""
         history = TrainingHistory(
             train_losses=(0.5, 0.3, 0.2),
             val_metrics=(0.7, 0.8, 0.75),
@@ -174,7 +174,7 @@ class TestSummarizeHistory:
 
     @staticmethod
     def test_historico_vazio_retorna_zeros() -> None:
-        """Historico vazio nao quebra a agregacao."""
+        """Historico vazio não quebra a agregação."""
         history = TrainingHistory(train_losses=(), val_metrics=(), stopped_epoch=-1)
         metrics = training_module.summarize_history(history)
         assert metrics["final_train_loss"] == 0.0
@@ -183,7 +183,7 @@ class TestSummarizeHistory:
 
 
 class TestSaveHistoryArtifact:
-    """Valida o artefato JSON do historico de treino."""
+    """Valida o artefato JSON do histórico de treino."""
 
     @staticmethod
     def test_salva_json_com_perdas_e_auc(tmp_path: Path) -> None:
@@ -224,7 +224,7 @@ class TestLogTrainingRun:
         mock_mlflow: MagicMock,
         setup_training_env: tuple[PipelineParams, Path],
     ) -> None:
-        """Todos os utilitarios de tracking sao chamados durante o run."""
+        """Todos os utilitarios de tracking são chamados durante o run."""
         params, tmp_path = setup_training_env
         from techchallenge_fase2.models.ncf import (
             NCFConfig,
@@ -325,7 +325,7 @@ class TestRunIntegratesMlflow:
         """run() configura MLflow, abre start_run e chama log_training_run."""
         params, _ = setup_training_env
 
-        # Trainer.train() retorna um historico minimo.
+        # Trainer.train() retorna um histórico mínimo.
         history = TrainingHistory(
             train_losses=(0.5,), val_metrics=(0.7,), stopped_epoch=-1
         )

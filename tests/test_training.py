@@ -44,7 +44,7 @@ def test_build_negative_rows_skips_user_on_saturation() -> None:
 
 
 def test_build_negative_rows_returns_only_non_seen_items() -> None:
-    """All sampled item indices lie outside the user's seen set."""
+    """All sampled item índices lie outside the user's seen set."""
     user_items = {0, 3}
     rows = build_negative_rows(
         user=7,

@@ -1,8 +1,8 @@
-"""Loop de treinamento do NCF com validacao, early stopping e checkpoints.
+"""Loop de treinamento do NCF com validação, early stopping e checkpoints.
 
-Orquestra epocas de treino por mini-batches (BCEWithLogitsLoss + Adam),
-avalia o conjunto de validacao a cada epoca com AUC-ROC e aciona o early
-stopping e o salvamento automatico de checkpoints do melhor modelo.
+Orquestra épocas de treino por mini-batches (BCEWithLogitsLoss + Adam),
+avalia o conjunto de validação a cada época com AUC-ROC e aciona o early
+stopping e o salvamento automático de checkpoints do melhor modelo.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 try:
     from tqdm.auto import tqdm
-except ImportError:  # pragma: no cover - tqdm e dependencia obrigatoria
+except ImportError:  # pragma: no cover - tqdm e dependência obrigatória
     tqdm = None  # type: ignore[assignment]
 
 from techchallenge_fase2.data import InteractionData
@@ -31,8 +31,8 @@ from techchallenge_fase2.training.early_stopping import EarlyStopping
 
 logger = logging.getLogger(__name__)
 
-# Mensagem exibida quando tqdm nao esta disponivel (apenas em ambientes
-# minimalistas); no projeto real tqdm e dependencia obrigatoria.
+# Mensagem exibida quando tqdm não esta disponível (apenas em ambientes
+# minimalistas); no projeto real tqdm e dependência obrigatória.
 TQDM_UNAVAILABLE = "tqdm indisponivel; rodando sem barras de progresso."
 
 
@@ -43,9 +43,9 @@ class TrainingConfig:
     Args:
         learning_rate: Taxa de aprendizado do otimizador Adam.
         batch_size: Tamanho do mini-batch.
-        epochs: Numero maximo de epocas.
+        epochs: Numero máximo de épocas.
         patience: Epocas sem melhora antes de parar (early stopping).
-        min_delta: Melhoria minima considerada significativa.
+        min_delta: Melhoria mínima considerada significativa.
         device: Dispositivo alvo ("cpu" ou "cuda").
     """
 
@@ -59,12 +59,12 @@ class TrainingConfig:
 
 @dataclass(frozen=True, slots=True)
 class TrainingHistory:
-    """Metricas coletadas a cada epoca de treino e validacao.
+    """Metricas coletadas a cada época de treino e validação.
 
     Args:
-        train_losses: Perda media por epoca no treino.
-        val_metrics: AUC de validacao por epoca.
-        stopped_epoch: Epoca em que o treino parou (-1 se nao parou cedo).
+        train_losses: Perda media por época no treino.
+        val_metrics: AUC de validação por época.
+        stopped_epoch: Epoca em que o treino parou (-1 se não parou cedo).
     """
 
     train_losses: tuple[float, ...]
@@ -100,7 +100,7 @@ def move_batch(batch, device):
 def run_epoch(
     model, loader, optimizer, criterion, device, epoch: int = 0, total_epochs: int = 0
 ):
-    """Executa uma epoca de treino e retorna a perda media."""
+    """Executa uma época de treino e retorna a perda media."""
     model.train()
     total_loss = 0.0
     iterator = loader
@@ -118,7 +118,7 @@ def run_epoch(
 
 
 def evaluate_auc(model, loader, device, epoch: int = 0, total_epochs: int = 0) -> float:
-    """Calcula o AUC do modelo no conjunto de validacao."""
+    """Calcula o AUC do modelo no conjunto de validação."""
     model.eval()
     all_probs: list[torch.Tensor] = []
     all_labels: list[torch.Tensor] = []
@@ -140,7 +140,7 @@ class Trainer:
     """Orquestra o loop de treino do NCF com early stopping e checkpoints."""
 
     def __init__(self, config: TrainingConfig, checkpoint_dir: Path) -> None:
-        """Inicializa o treinador com hiperparametros e diretorio de saida."""
+        """Inicializa o treinador com hiperparametros e diretório de saída."""
         self.config = config
         self.checkpoint_dir = checkpoint_dir
         self.device = torch.device(config.device)
@@ -150,7 +150,7 @@ class Trainer:
     def train(
         self, model: NeuralCollaborativeFiltering, data: InteractionData
     ) -> TrainingHistory:
-        """Executa o treino completo e retorna o historico de metricas."""
+        """Executa o treino completo e retorna o histórico de métricas."""
         model.to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.config.learning_rate)
         criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -171,7 +171,7 @@ class Trainer:
         )
 
     def _run_loop(self, model, optimizer, criterion, train_loader, val_loader, early):
-        """Itera pelas epocas aplicando treino, validacao e checkpoints."""
+        """Itera pelas épocas aplicando treino, validação e checkpoints."""
         train_losses: list[float] = []
         val_metrics: list[float] = []
         stopped_epoch = -1

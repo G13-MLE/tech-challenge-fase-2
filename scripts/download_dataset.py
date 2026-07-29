@@ -102,7 +102,7 @@ def download_dataset(raw_dir: Path) -> None:
 
 
 def verify_download(raw_dir: Path) -> None:
-    """Confirma que todos os arquivos esperados estao presentes.
+    """Confirma que todos os arquivos esperados estão presentes.
 
     Args:
         raw_dir: Caminho do diretório data/raw/.

@@ -62,7 +62,7 @@ def _():
         p.name for p in [events_path, category_tree_path] + item_prop_paths if not p.exists()
     ]
     if missing:
-        raise FileNotFoundError(f"CSV(s) nao encontrados: {', '.join(missing)}")
+        raise FileNotFoundError(f"CSV(s) não encontrados: {', '.join(missing)}")
 
     events_path, category_tree_path, item_prop_paths
     return DATA_DIR, Path, events_path, category_tree_path, item_prop_paths, pl, pd, plt, os
@@ -660,11 +660,11 @@ def _(events_pd, pd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # 5. Perfis comportamentais e cenarios de recomendacao
+    # 5. Perfis comportamentais e cenarios de recomendação
 
     A PR #26 trouxe um ponto importante: alem de entender o dataset, a EDA precisa apontar
-    qual experiencia de recomendacao queremos viabilizar. Como nao existem dados demograficos
-    do visitor, os perfis precisam ser derivados do proprio historico.
+    qual experiência de recomendação queremos viabilizar. Como não existem dados demograficos
+    do visitor, os perfis precisam ser derivados do próprio histórico.
     """)
     return
 
@@ -762,20 +762,20 @@ def _(pd):
             (
                 "Home / top 5 para visitor",
                 "visitorid + perfil comportamental",
-                "historico, categorias preferidas, recencia, popularidade e fallback",
-                "top 5 itens com maior probabilidade de interacao forte",
+                "histórico, categorias preferidas, recencia, popularidade e fallback",
+                "top 5 itens com maior probabilidade de interação forte",
             ),
             (
                 "Pagina de produto",
                 "item atual + visitor quando existir",
-                "coocorrencia item-item, categoria, disponibilidade e sinais da sessao",
+                "coocorrencia item-item, categoria, disponibilidade e sinais da sessão",
                 "itens similares/complementares ao item exibido",
             ),
             (
                 "Cold start",
-                "sem historico suficiente",
-                "best sellers, trending por periodo e categorias mais fortes",
-                "recomendacao segura ate acumular historico",
+                "sem histórico suficiente",
+                "best sellers, trending por período e categorias mais fortes",
+                "recomendação segura até acumular histórico",
             ),
         ],
         columns=["cenario", "entrada", "sinais", "saida_esperada"],
@@ -788,15 +788,15 @@ def _(pd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # 6. Decisoes tecnicas e proximos passos
+    # 6. Decisoes técnicas e próximos passos
 
     | Decisao | Detalhe |
     |---------|---------|
-    | **Sessão** | gap ≥ 30min OU (prev == transaction E cur != transaction). Transacoes consecutivas ficam na mesma sessao. |
+    | **Sessão** | gap ≥ 30min OU (prev == transaction E cur != transaction). Transacoes consecutivas ficam na mesma sessão. |
     | **Split** | Cronologico 70/15/15. Dentro de cada particao, h=[s1..sm-1] vs t=sm. |
     | **Feedback** | Implicito: view=1, addtocart=3, transaction=5 |
-    | **Perfis** | Derivados do historico: cold/single view, recurring browser, cart intent e buyer |
-    | **Cenarios** | Top 5 na home, recomendacao em pagina de produto e fallback cold-start |
+    | **Perfis** | Derivados do histórico: cold/single view, recurring browser, cart intent e buyer |
+    | **Cenarios** | Top 5 na home, recomendação em pagina de produto e fallback cold-start |
     | **Features diretas** | `categoryid`, `available`, property `790` (numerico) |
     | **Features hashed** | Bag-of-tokens apos filtro por cobertura |
     | **Join temporal** | `merge_asof backward` — zero leakage |

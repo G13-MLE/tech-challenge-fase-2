@@ -1,4 +1,4 @@
-"""Pipeline de execucao, orquestracao de treinamento e estagios DVC."""
+"""Pipeline de execução, orquestracao de treinamento e estagios DVC."""
 
 from techchallenge_fase2.pipelines.model_result import (
     ModelResult,

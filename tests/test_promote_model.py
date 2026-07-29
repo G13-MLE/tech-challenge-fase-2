@@ -1,6 +1,6 @@
 """Tests for the promote pipeline (validation + Production transition).
 
-Mock do ``MlflowClient`` para evitar dependencia de servidor real.
+Mock do ``MlflowClient`` para evitar dependência de servidor real.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from techchallenge_fase2.pipelines.promote_model import (
 
 
 class _FakeRecommenderPyFunc:
-    """pyfunc fake: devolve recomendacoes pre-definidas."""
+    """pyfunc fake: devolve recomendações pre-definidas."""
 
     def __init__(self, recs: dict[str, list[str]]) -> None:
         self._recs = recs

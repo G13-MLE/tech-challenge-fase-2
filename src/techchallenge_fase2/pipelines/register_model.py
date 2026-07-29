@@ -1,13 +1,13 @@
-"""Pipeline de registro do modelo campeao no MLflow Model Registry.
+"""Pipeline de registro do modelo campeão no MLflow Model Registry.
 
 Orquestra o fluxo exigido pela issue #16:
-1. Descobre o campeao do experimento ``tech-challenge-comparison``
+1. Descobre o campeão do experimento ``tech-challenge-comparison``
    (maior ``harmonic_mean_at_10`` entre os runs ``compare_*``).
 2. Carrega o modelo treinado a partir do artefato pickle do run.
 3. Empacota como ``RecommenderPythonModel`` (pyfunc) num novo run
    ``register_champion`` do experimento ``tech-challenge-registry``.
 4. Registra o modelo no Model Registry com nome configuravel.
-5. Promove a versao recem-registrada para ``Staging``.
+5. Promove a versão recem-registrada para ``Staging``.
 
 Uso:
     $ uv run python -m techchallenge_fase2.pipelines.register_model
@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--comparison-experiment",
         default=None,
-        help="Experimento MLflow de comparacao (override)",
+        help="Experimento MLflow de comparação (override)",
     )
     parser.add_argument(
         "--registry-experiment",
@@ -85,26 +85,26 @@ def discover_champion_run(
     client: mlflow.tracking.MlflowClient,
     comparison_experiment_name: str,
 ) -> tuple[str, str, float]:
-    """Encontra o run campeao no experimento de comparacao.
+    """Encontra o run campeão no experimento de comparação.
 
     Busca runs ``compare_*`` ordenados por ``harmonic_mean_at_10``
     decrescente e devolve o primeiro com artefato de modelo.
 
     Args:
         client: Cliente MLflow.
-        comparison_experiment_name: Nome do experimento de comparacao.
+        comparison_experiment_name: Nome do experimento de comparação.
 
     Returns:
-        Tupla (run_id, model_name, harmonic_mean_at_10) do campeao.
+        Tupla (run_id, model_name, harmonic_mean_at_10) do campeão.
 
     Raises:
-        RuntimeError: Se o experimento nao existir ou nenhum run elegivel.
+        RuntimeError: Se o experimento não existir ou nenhum run elegivel.
     """
     experiment = client.get_experiment_by_name(comparison_experiment_name)
     if experiment is None:
         msg = (
-            f"Experimento de comparacao '{comparison_experiment_name}' "
-            "nao encontrado. Rode 'make compare-models' antes do registro."
+            f"Experimento de comparação '{comparison_experiment_name}' "
+            "não encontrado. Rode 'make compare-models' antes do registro."
         )
         raise RuntimeError(msg)
 
@@ -133,7 +133,7 @@ def discover_champion_run(
             )
             continue
         logger.info(
-            "Campeao: %s (run %s, %s=%.4f)",
+            "Campeão: %s (run %s, %s=%.4f)",
             model_name,
             run_id,
             CHAMPION_METRIC_KEY,
@@ -161,14 +161,14 @@ def has_model_artifact(
 
 
 def compute_harmonic_mean_from_metrics(metrics: dict[str, float]) -> float | None:
-    """Calcula a media harmonica @10 das metricas canonicas logadas.
+    """Calcula a media harmonica @10 das métricas canônicas logadas.
 
     Args:
-        metrics: Dicionario de metricas do run (precision@10, etc).
+        metrics: Dicionario de métricas do run (precision@10, etc).
 
     Returns:
         Media harmonica de precision/recall/ndcg/map @10, ou None se
-        alguma metrica canonica estiver ausente.
+        alguma métrica canônica estiver ausente.
     """
     values = [metrics.get(key) for key in CANONICAL_METRIC_KEYS]
     if any(v is None for v in values):
@@ -204,11 +204,11 @@ def find_pickle_artifact(
     client: mlflow.tracking.MlflowClient,
     run_id: str,
 ) -> str:
-    """Localiza um artefato pickle dentro do diretorio ``model``.
+    """Localiza um artefato pickle dentro do diretório ``model``.
 
     Args:
         client: Cliente MLflow.
-        run_id: Run ID do campeao.
+        run_id: Run ID do campeão.
 
     Returns:
         Caminho relativo do artefato pickle (ex: ``model/tmpXXX.pkl``).
@@ -222,13 +222,13 @@ def find_pickle_artifact(
             return artifact.path
     msg = (
         f"Nenhum artefato .pkl encontrado em 'model/' do run {run_id}. "
-        "Verifique como o campeao foi logado."
+        "Verifique como o campeão foi logado."
     )
     raise RuntimeError(msg)
 
 
 def load_pyfunc_model(run_id: str) -> RecommenderModel:
-    """Carrega o modelo salvo como pyfunc/PyTorch do run do campeao."""
+    """Carrega o modelo salvo como pyfunc/PyTorch do run do campeão."""
     logger.info("Carregando pyfunc do run %s/", run_id)
     loaded = mlflow.pyfunc.load_model(f"runs:/{run_id}/model")
     return _RecommenderFromPyFunc(loaded)
@@ -244,7 +244,7 @@ def load_pickle_artifact(run_id: str, artifact_path: str) -> RecommenderModel:
         obj = pickle.load(handle)  # noqa: S301
     if not isinstance(obj, RecommenderModel):
         msg = (
-            f"Artefato {artifact_path} do run {run_id} nao e "
+            f"Artefato {artifact_path} do run {run_id} não e "
             f"RecommenderModel: {type(obj).__name__}."
         )
         raise TypeError(msg)
@@ -282,10 +282,10 @@ def package_and_log(
     """Empacota o modelo como pyfunc e loga num novo run de registro.
 
     Args:
-        model: Instancia treinada do recomendador campeao.
-        champion_run_id: Run ID do campeao no experimento de comparacao.
-        champion_model_name: Nome canonico do modelo campeao.
-        harmonic_mean: Metrica H-Mean@10 do campeao.
+        model: Instancia treinada do recomendador campeão.
+        champion_run_id: Run ID do campeão no experimento de comparação.
+        champion_model_name: Nome canônico do modelo campeão.
+        harmonic_mean: Metrica H-Mean@10 do campeão.
 
     Returns:
         Run ID do novo run de registro.
@@ -316,7 +316,7 @@ def register_model_version(
     run_id: str,
     model_name: str,
 ) -> mlflow.entities.model_registry.ModelVersion:
-    """Registra a versao do modelo no Model Registry.
+    """Registra a versão do modelo no Model Registry.
 
     Args:
         client: Cliente MLflow.
@@ -329,7 +329,7 @@ def register_model_version(
     model_uri = f"runs:/{run_id}/model"
     version = mlflow.register_model(model_uri=model_uri, name=model_name)
     logger.info(
-        "Modelo registrado: %s versao %s (stage %s)",
+        "Modelo registrado: %s versão %s (stage %s)",
         model_name,
         version.version,
         version.current_stage,
@@ -344,14 +344,14 @@ def transition_to_stage(
     stage: str,
     archive_existing: bool = True,
 ) -> mlflow.entities.model_registry.ModelVersion:
-    """Promove a versao para o stage informado.
+    """Promove a versão para o stage informado.
 
     Args:
         client: Cliente MLflow.
         model_name: Nome do modelo no Registry.
         version: Versao a promover.
         stage: Stage de destino (``Staging`` ou ``Production``).
-        archive_existing: Arquiva versoes anteriores no mesmo stage.
+        archive_existing: Arquiva versões anteriores no mesmo stage.
 
     Returns:
         Objeto ``ModelVersion`` atualizado.
@@ -363,7 +363,7 @@ def transition_to_stage(
         archive_existing_versions=archive_existing,
     )
     logger.info(
-        "Modelo %s versao %s promovido para %s",
+        "Modelo %s versão %s promovido para %s",
         model_name,
         version,
         stage,
@@ -380,7 +380,7 @@ def run(
 
     Args:
         model_name: Nome do modelo no Registry.
-        comparison_experiment_name: Nome do experimento de comparacao.
+        comparison_experiment_name: Nome do experimento de comparação.
         registry_experiment_name: Nome do experimento de registro.
 
     Returns:
@@ -415,7 +415,7 @@ def run(
     version = register_model_version(client, register_run_id, model_name)
     transition_to_stage(client, model_name, str(version.version), STAGING_STAGE)
     logger.info(
-        "Registro concluido: %s versao %s em %s",
+        "Registro concluído: %s versão %s em %s",
         model_name,
         version.version,
         STAGING_STAGE,
@@ -427,7 +427,7 @@ def main() -> int:
     """Ponto de entrada do script de registro.
 
     Returns:
-        Codigo de saida (0 sucesso, 1 erro).
+        Codigo de saída (0 sucesso, 1 erro).
     """
     args = parse_args()
     try:

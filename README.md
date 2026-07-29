@@ -46,32 +46,19 @@ baselines, pipeline reprodutível com **DVC** e experimentos rastreados com
 
 ## Arquitetura
 
-```
-                    +----------------------+
- events.csv         |  DVC pipeline        |        +----------------+
- (RetailRocket) --> | preprocess ->        | -----> | MLflow tracking|
-                    | feature_eng ->       |        | (params, metrics,|
-                    | train -> evaluate    |        |  artifacts,      |
-                    +----------------------+        |  model_card.json)|
-                           |                        +----------------+
-                           v                                |
-                  models/torch_embedding_                    |
-                  recommender.pt                              |
-                           |                                v
-                           v                        +------------------+
-                  metrics/recommendation_          | MLflow Model     |
-                  metrics.json                     | Registry          |
-                                                   | Staging ->        |
-                                                   | Production       |
-                                                   +------------------+
-                                                           | v
-                                                           v
-                                                  inference CLI (`load_model`)
-                                                  recommends via models:/.../Production
+```mermaid
+flowchart TD
+    A[("events.csv\n(RetailRocket)")] --> B["DVC pipeline\n(preprocess → feature_eng → train → evaluate)"]
+    B --> C["MLflow Tracking\n(params,metrics, artifacts, model_card.json)"]
+    B --> D["models/torch_embedding_recommender.pt"]
+    D --> E["metrics/recommendation_metrics.json"]
+    C --> F["MLflow Model Registry\nStaging → Production"]
+    F --> G["inference CLI\n(load_model)"]
+    G --> H["recommends via\nmodels:/.../Production"]
 ```
 
 Design patterns aplicados:
-- **Factory** — `src/techchallenge_fase2/models/factory.py` instancia modelos por nome.
+- **Factory** — `src/techchallenge_fase2/models/factory.py` instância modelos por nome.
 - **Strategy** — preprocessadores intercambiaveis via `params.features.event_weights`.
 - **Template Method** — `Trainer._run_loop` orquestra treino com early stopping + checkpoints.
 
@@ -93,9 +80,9 @@ Design patterns aplicados:
 | 3     | Pipeline DVC ≥ 3 stages (preprocess/feature_eng/train/evaluate)    | ✔ Reprodutível | `dvc.yaml` (4 stages), `dvc.lock` atualizado c/ dataset real; `dvc pull` testado em clone limpo |
 | 3     | MLflow tracking (params/métricas/artefatos/Model Card)              | ✔ Concluído   | `training/mlflow_tracking.py`                              |
 | 4     | MLP/NCF em PyTorch + early stopping                                 | ✔ Treinado     | `models/ncf.py`, `training/trainer.py`, `training/early_stopping.py` |
-| 4     | Comparação com baselines scikit-learn usando ≥ 4 métricas          | ✔ Validado     | `pipelines/run_compare_models.py` (Precision, Recall, NDCG, MAP, HitRate + `harmonic_mean_at_10`); 6 modelos avaliados no catalogo filtrado (10k itens); campeao EASE^ (H-Mean@10=0.0325) > NCF, ItemKNN, etc. |
-| 4     | Model Registry Staging → Production                                 | ⚠ Pendente     | `pipelines/register_model.py`, `promote_model.py`, `inference/load_model.py`; campeao `ease_torch` declarado; `make register && make promote` pendentes |
-| 4     | Model Card                                                          | ✔ Concluído   | `docs/MODEL_CARD.md` (gerado tambem como JSON no MLflow)  |
+| 4     | Comparação com baselines scikit-learn usando ≥ 4 métricas          | ✔ Validado     | `pipelines/run_compare_models.py` (Precision, Recall, NDCG, MAP, HitRate + `harmonic_mean_at_10`); 6 modelos avaliados no catalogo filtrado (10k itens); campeão EASE^ (H-Mean@10=0.0325) > NCF, ItemKNN, etc. |
+| 4     | Model Registry Staging → Production                                 | ⚠ Pendente     | `pipelines/register_model.py`, `promote_model.py`, `inference/load_model.py`; campeão `ease_torch` declarado; `make register && make promote` pendentes |
+| 4     | Model Card                                                          | ✔ Concluído   | `docs/MODEL_CARD.md` (gerado também como JSON no MLflow)  |
 | 4     | README completo                                                     | ✔ Concluído   | este arquivo                                              |
 | 4     | Vídeo STAR de 5 minutos                                             | ⚠ Em progresso | link externo: TBD                                          |
 | Bônus | Deploy em nuvem via Docker (URL pública + /health)                  | ⚠ Opcional    | issue #20 aberta                                          |
@@ -141,11 +128,11 @@ Design patterns aplicados:
 git clone https://github.com/G13-MLE/tech-challenge-fase-2.git
 cd tech-challenge-fase-2
 
-# 2. Copiar variaveis de ambiente e preencher credenciais
+# 2. Copiar variáveis de ambiente e preencher credenciais
 cp .env.example .env
 #   Edite .env e preencha:
 #     - KAGGLE_USERNAME, KAGGLE_KEY          (para baixar o dataset)
-#     - DVC_ONEDRIVE_REMOTE_URL              (obrigatorio para dvc push/pull;
+#     - DVC_ONEDRIVE_REMOTE_URL              (obrigatório para dvc push/pull;
 #                                            caminho local sincronizado pelo
 #                                            cliente OneDrive, ex. Linux:
 #                                            /home/<user>/OneDrive/techchallenge-fase2/files/
@@ -155,7 +142,7 @@ cp .env.example .env
 #                                            C:/Users/<user>/OneDrive/techchallenge-fase2/files/)
 #     - MLFLOW_TRACKING_URI                  (default http://localhost:5000 ou file:./mlruns)
 
-# 3. Sincronizar dependencias e configurar pre-commit + DVC remote
+# 3. Sincronizar dependências e configurar pre-commit + DVC remote
 make setup                       # uv sync + pre-commit install + setup_environment.py
 make verify                      # valida Python, deps, .env, DVC e Docker
 
@@ -166,7 +153,7 @@ make data
 ## Como executar o pipeline
 
 Existem dois caminhos concomitantes. O **A** usa DVC (rastreabilidade), o **B**
-invoca os modulos diretamente (maximo progresso visual via tqdm).
+invoca os módulos diretamente (máximo progresso visual via tqdm).
 
 ### Caminho A — pipeline reprodutivel via DVC
 
@@ -190,24 +177,24 @@ make dvc-push
 
 ### Caminho B — pipeline direto (mais rápido para iteração visualize)
 
-Reaproveita os parquets ja gerados se existirem; pula o DVC e exibe tqdm/logs em
+Reaproveita os parquets já gerados se existirem; pula o DVC e exibe tqdm/logs em
 tempo real sem buffer do DVC.
 
 ```bash
 # Tudo de uma vez:
 make pipeline-live
 
-# Ou apenas o treino (avaliacao depois, opcional):
+# Ou apenas o treino (avaliação depois, opcional):
 make train-live
 ```
 
 Você verá:
 ```
 2026-07-26 17:04:44 - __main__ - INFO - [STAGE 3/4] TRAIN - treino do NCF (PyTorch) com MLflow tracking
-2026-07-26 17:04:44 - __main__ - INFO -   catalogo: usuarios=1407580 itens=235061 embedding_dim=64
-2026-07-26 17:04:44 - __main__ - INFO -   treino: 1929270 interacoes | validacao: 413415 interacoes
+2026-07-26 17:04:44 - __main__ - INFO -   catalogo: usuários=1407580 itens=235061 embedding_dim=64
+2026-07-26 17:04:44 - __main__ - INFO -   treino: 1929270 interações | validação: 413415 interações
 Epochs:   0%|          | 0/20 [00:00<?<?, ?ep/s]                  # tqdm global
-  ep  1/20:   1%|          | 38/3000 [00:01<-01:00, 37.5batch/s]  # tqdm por epoca
+  ep  1/20:   1%|          | 38/3000 [00:01<-01:00, 37.5batch/s]  # tqdm por época
   ep  1/20 val: 50%|#####     | 870/1740 [00:00<00:01, 775.4batch/s]
 2026-07-26 17:04:48 - techchallenge_fase2.training.trainer - INFO -   [BEST] ep 1/20  loss=0.6234  val_auc=0.7112
 ```
@@ -221,8 +208,8 @@ DVC. Os principais:
 |--------------|------------------|---------|-------------------------------------------------------------|
 | `preprocess` | `sample_size`    | 0       | 0 = dataset completo. >0 = amostragem deterministica        |
 | `preprocess` | `random_seed`    | 42      | Seed reprodutivel                                           |
-| `features`   | `train_ratio`    | 0.70    | % cronologica para treino                                   |
-| `features`   | `validation_ratio` | 0.15  | % cronologica para validacao                                |
+| `features`   | `train_ratio`    | 0.70    | % cronológica para treino                                   |
+| `features`   | `validation_ratio` | 0.15  | % cronológica para validação                                |
 | `training`   | `epochs`         | 20      | Maximo de épocas (early stopping com `patience=5`)           |
 | `training`   | `batch_size`     | 1024    | Tamanho do mini-batch                                       |
 | `training`   | `embedding_dim`  | 64      | Dimensão dos embeddings GMF/MLP                             |
@@ -237,16 +224,16 @@ O fluxo completo Staging → Production segue três etapas:
 `compare-models` → `register` → `promote`.
 
 ```bash
-# 1. Avaliar NCF vs EASE^ vs baselines scikit-learn com >=4 metricas + harmonic@10
+# 1. Avaliar NCF vs EASE^ vs baselines scikit-learn com >=4 métricas + harmonic@10
 make compare-models
 #   - Roda modelos (==3 runs no MLflow) sobre validation/teste
 #   - Gera models/model_comparison.csv e reports/model_comparison_report.md (markdown)
-#   - O campeao e o de maior harmonic_mean_at_10
+#   - O campeão e o de maior harmonic_mean_at_10
 
-# 2. Empacotar o campeao como pyfunc e registar no Model Registry em Staging
+# 2. Empacotar o campeão como pyfunc e registar no Model Registry em Staging
 make register
 
-# 3. Validar Staging vs baseline atual (com tolerancia configuravel)
+# 3. Validar Staging vs baseline atual (com tolerância configuravel)
 make promote-dry-run          # sem alterar Production
 #   - Verifica se Staging esta dentro de MLFLOW_REGISTRY_STAGING_TOLERANCE (default 0.05)
 
@@ -257,7 +244,7 @@ make promote
 Tolerâncias e nomes são configurados no `.env`:
 
 - `MLFLOW_MODEL_NAME` — nome do modelo no Registry (default `TechChallengeFase2Recommender`).
-- `MLFLOW_REGISTRY_STAGING_TOLERANCE` — desvio maximo aceitavel vs `model_comparison.csv`.
+- `MLFLOW_REGISTRY_STAGING_TOLERANCE` — desvio máximo aceitável vs `model_comparison.csv`.
 
 ## Inferência
 
@@ -274,7 +261,7 @@ uv run python -m techchallenge_fase2.inference.load_model list-versions
 
 ## Docker
 
-### Imagem da aplicacao (multi-stage, CPU/GPU)
+### Imagem da aplicação (multi-stage, CPU/GPU)
 
 ```bash
 make docker-build            # target cpu (default)
@@ -328,8 +315,9 @@ Git (ver `.gitignore`). Use `make data` para baixar, e `make dvc-push` /
 **G13-MLE** — Grupo 13 (PÓS TECH FIAP) - Tech Challenge Fase 02:
 
 - Eduardo Nunes Pereira
-- Fernando (autor local deste repositorio)
+- Fernando Falila
 - Ygor Martinelli
+- Bruno Fructuoso
 
 ## Licença
 

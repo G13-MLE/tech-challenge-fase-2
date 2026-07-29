@@ -1,12 +1,12 @@
-"""Pipeline dedicado ao EASE^ com tracking MLflow no experimento proprio.
+"""Pipeline dedicado ao EASE^ com tracking MLflow no experimento próprio.
 
-Orquestra o fluxo completo do candidato a campeao:
-1. Carrega configuracao e ambiente
-2. Carrega dados de interacoes
-3. Divide em treino/teste (split cronologico global)
+Orquestra o fluxo completo do candidato a campeão:
+1. Carrega configuração e ambiente
+2. Carrega dados de interações
+3. Divide em treino/teste (split cronológico global)
 4. Treina e avalia o EASE^ (Embarrassingly Shallow Autoencoder)
-5. Registra hiperparametros, metricas e artefatos no MLflow
-6. Salva relatorio markdown individual do EASE^
+5. Registra hiperparametros, métricas e artefatos no MLflow
+6. Salva relatório markdown individual do EASE^
 
 Como usar:
     $ uv run python -m techchallenge_fase2.pipelines.run_ease
@@ -91,7 +91,7 @@ def parse_args() -> argparse.Namespace:
         "--test-ratio",
         type=float,
         default=0.15,
-        help="Fracao de interacoes para teste (default: 0.15)",
+        help="Fracao de interações para teste (default: 0.15)",
     )
     parser.add_argument(
         "--random-seed",
@@ -109,13 +109,13 @@ def parse_args() -> argparse.Namespace:
         "--max-items",
         type=int,
         default=20000,
-        help="Numero maximo de itens no catalogo (default: 20000)",
+        help="Numero máximo de itens no catalogo (default: 20000)",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=1000,
-        help="Tamanho do lote para predicao (default: 1000)",
+        help="Tamanho do lote para predição (default: 1000)",
     )
     parser.add_argument(
         "--popularity-blending",
@@ -146,17 +146,17 @@ def run_ease_pipeline(  # noqa: PLR0913
 
     Args:
         data_dir: Diretorio com dados brutos.
-        test_ratio: Fracao de interacoes para teste.
+        test_ratio: Fracao de interações para teste.
         random_seed: Seed para reprodutibilidade.
         lambda_reg: Regularizacao L2 do EASE^.
-        max_items: Numero maximo de itens no catalogo.
-        batch_size: Tamanho do lote para predicao.
+        max_items: Numero máximo de itens no catalogo.
+        batch_size: Tamanho do lote para predição.
         popularity_blending: Peso de popularidade no score.
         experiment_name: Nome do experimento MLflow (override).
-        k_values: Valores de K para as metricas.
+        k_values: Valores de K para as métricas.
 
     Returns:
-        ModelResult com as metricas do EASE^.
+        ModelResult com as métricas do EASE^.
     """
     load_dotenv_silent()
     logging.basicConfig(
@@ -245,15 +245,15 @@ def run_ease_pipeline(  # noqa: PLR0913
 def split_chronological(
     interactions_df: pd.DataFrame, test_ratio: float
 ) -> tuple[list[Interaction], dict[str, set[str]], dict[str, list[str]]]:
-    """Divide interacoes usando split cronologico 3-way com warm-start filter.
+    """Divide interações usando split cronológico 3-way com warm-start filter.
 
-    Usa split cronologico global 70/15/15 (treino/validacao/teste) conforme
-    o plano da issue #15. O conjunto de validacao fica disponivel para
-    ajuste futuro de hiperparametros; a avaliacao final usa o teste.
+    Usa split cronológico global 70/15/15 (treino/validação/teste) conforme
+    o plano da issue #15. O conjunto de validação fica disponível para
+    ajuste futuro de hiperparametros; a avaliação final usa o teste.
 
     Args:
         interactions_df: DataFrame com colunas user_id, item_id, timestamp.
-        test_ratio: Fracao para teste (default 0.15; validacao usa a mesma).
+        test_ratio: Fracao para teste (default 0.15; validação usa a mesma).
 
     Returns:
         Tupla (train_interactions, test_ground_truth, all_items_by_user).
@@ -288,7 +288,7 @@ def time_fit(model: Any, interactions: list[Interaction]) -> float:
 def time_recommend(
     model: Any, ground_truth: dict[str, set[str]], limit: int
 ) -> tuple[dict[str, list[str]], float]:
-    """Mede o tempo de inferencia e retorna recomendacoes."""
+    """Mede o tempo de inferencia e retorna recomendações."""
     t0 = time.perf_counter()
     recommended: dict[str, list[str]] = {}
     for user_id in ground_truth:
@@ -308,19 +308,19 @@ def log_to_mlflow(  # noqa: PLR0913
     dataset_version: str,
     k_values: tuple[int, ...],
 ) -> None:
-    """Registra hiperparametros, metricas e artefatos do EASE^ no MLflow.
+    """Registra hiperparametros, métricas e artefatos do EASE^ no MLflow.
 
     Args:
         model: Instancia do EASETorchRecommender treinado.
-        result: ModelResult com metricas e tempos.
+        result: ModelResult com métricas e tempos.
         config: ModelConfig usada no treino.
-        interactions_df: DataFrame completo de interacoes.
+        interactions_df: DataFrame completo de interações.
         train_interactions: Interacoes de treino.
-        ground_truth: Itens relevantes por usuario.
+        ground_truth: Itens relevantes por usuário.
         test_ratio: Fracao de teste.
         random_seed: Seed usado.
         dataset_version: Versao do dataset via DVC.
-        k_values: Valores de K das metricas.
+        k_values: Valores de K das métricas.
     """
     reports_dir = Path("reports")
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -408,16 +408,16 @@ def save_ease_report(  # noqa: PLR0913
     random_seed: int,
     k_values: tuple[int, ...],
 ) -> None:
-    """Gera e salva relatorio markdown individual do EASE^.
+    """Gera e salva relatório markdown individual do EASE^.
 
     Args:
-        result: ModelResult com metricas do EASE^.
-        interactions_df: DataFrame completo de interacoes.
+        result: ModelResult com métricas do EASE^.
+        interactions_df: DataFrame completo de interações.
         train_interactions: Interacoes de treino.
-        ground_truth: Itens relevantes por usuario.
+        ground_truth: Itens relevantes por usuário.
         test_ratio: Fracao de teste.
         random_seed: Seed usado.
-        k_values: Valores de K das metricas.
+        k_values: Valores de K das métricas.
     """
     report_content = generate_markdown_report(
         results=[result],
@@ -441,9 +441,9 @@ def save_ease_report(  # noqa: PLR0913
 
 
 def sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
-    """Sanitiza nomes de metricas para compatibilidade com MLflow.
+    """Sanitiza nomes de métricas para compatibilidade com MLflow.
 
-    MLflow nao aceita '@' em nomes de metricas; substitui por '_at_'.
+    MLflow não aceita '@' em nomes de métricas; substitui por '_at_'.
     """
     return {key.replace("@", "_at_"): value for key, value in metrics.items()}
 
@@ -452,7 +452,7 @@ def main() -> int:
     """Ponto de entrada do pipeline dedicado do EASE^.
 
     Returns:
-        Codigo de saida (0 para sucesso).
+        Codigo de saída (0 para sucesso).
     """
     args = parse_args()
     try:
@@ -476,10 +476,10 @@ def main() -> int:
         print(f"Inferencia: {result.infer_time_sec:.2f}s")
         return 0
     except FileNotFoundError as e:
-        logger.error("Arquivo nao encontrado: %s", e)
+        logger.error("Arquivo não encontrado: %s", e)
         return 1
     except Exception:
-        logger.exception("Erro na execucao do pipeline do EASE^")
+        logger.exception("Erro na execução do pipeline do EASE^")
         return 1
 
 

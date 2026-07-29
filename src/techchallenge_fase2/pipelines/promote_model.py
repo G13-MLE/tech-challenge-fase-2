@@ -1,15 +1,15 @@
 """Valida o modelo em Staging e promove para Production.
 
-Implementa a etapa de validacao exigida pela issue #16 antes da
-promocao para Production:
+Implementa a etapa de validação exigida pela issue #16 antes da
+promoção para Production:
 
-1. Carrega a versao em Staging do Model Registry.
-2. Reavalia as recomendacoes num conjunto de teste derivado do
+1. Carrega a versão em Staging do Model Registry.
+2. Reavalia as recomendações num conjunto de teste derivado do
    ``data/features/test.parquet`` splitado cronologicamente.
-3. Compara a media harmonica @10 com a referencia registrada em
+3. Compara a media harmonica @10 com a referência registrada em
    ``models/model_comparison.csv``.
-4. Se dentro da tolerancia configuravel, promove para Production
-   (arquivando versoes anteriores).
+4. Se dentro da tolerância configuravel, promove para Production
+   (arquivando versões anteriores).
 
 Uso:
     $ uv run python -m techchallenge_fase2.pipelines.promote_model
@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
         default=float(
             os.getenv("MLFLOW_REGISTRY_STAGING_TOLERANCE", DEFAULT_TOLERANCE)
         ),
-        help="Tolerancia relativa aceitavel vs referencia (default: 0.05)",
+        help="Tolerancia relativa aceitável vs referência (default: 0.05)",
     )
     parser.add_argument(
         "--test-path",
@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--reference-csv",
         default=DEFAULT_REFERENCE_CSV,
-        help="CSV com a metrica de referencia do campeao",
+        help="CSV com a métrica de referência do campeão",
     )
     parser.add_argument(
         "--registry-experiment",
@@ -99,7 +99,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_staging_model(model_name: str) -> tuple[Any, str]:
-    """Carrega a versao atual em Staging do modelo.
+    """Carrega a versão atual em Staging do modelo.
 
     Args:
         model_name: Nome do modelo no Registry.
@@ -109,20 +109,20 @@ def load_staging_model(model_name: str) -> tuple[Any, str]:
         o contrato ``predict`` do ``RecommenderPythonModel``.
 
     Raises:
-        RuntimeError: Se nao houver versao em Staging.
+        RuntimeError: Se não houver versão em Staging.
     """
     client = mlflow.tracking.MlflowClient()
     versions = client.get_latest_versions(model_name, stages=[STAGING_STAGE])
     if not versions:
         msg = (
-            f"Nenhuma versao de '{model_name}' em {STAGING_STAGE}. "
+            f"Nenhuma versão de '{model_name}' em {STAGING_STAGE}. "
             "Rode 'make register' antes de 'make promote'."
         )
         raise RuntimeError(msg)
     version = versions[0]
     model_uri = f"models:/{model_name}/{STAGING_STAGE}"
     logger.info(
-        "Carregando %s versao %s (%s)",
+        "Carregando %s versão %s (%s)",
         model_name,
         version.version,
         STAGING_STAGE,
@@ -131,13 +131,13 @@ def load_staging_model(model_name: str) -> tuple[Any, str]:
 
 
 def build_test_ground_truth(test_path: str) -> tuple[Any, dict[str, set[str]]]:
-    """Constroi interacoes de treino e ground truth de teste.
+    """Constrói interações de treino e ground truth de teste.
 
     Reusa o ``data/raw`` + ``temporal_holdout_split`` para gerar um
-    conjunto de avaliacao coerente com o pipeline de comparacao.
+    conjunto de avaliação coerente com o pipeline de comparação.
 
     Args:
-        test_path: Caminho do parquet de teste (usado so para validar
+        test_path: Caminho do parquet de teste (usado só para validar
             a existencia; o split reexecuta a partir do raw).
 
     Returns:
@@ -159,12 +159,12 @@ def predict_batch(
     ground_truth: dict[str, set[str]],
     limit: int,
 ) -> dict[str, list[str]]:
-    """Gera recomendacoes em late chamando o pyfunc carregado.
+    """Gera recomendações em late chamando o pyfunc carregado.
 
     Args:
         model: Modelo pyfunc carregado via ``mlflow.pyfunc.load_model``.
         ground_truth: Mapeamento user_id -> itens relevantes.
-        limit: Numero de recomendacoes por usuario.
+        limit: Numero de recomendações por usuário.
 
     Returns:
         Dicionario user_id -> lista de itens recomendados.
@@ -184,10 +184,10 @@ def evaluate_staging(model: Any, ground_truth: dict[str, set[str]]) -> float:
 
     Args:
         model: Modelo pyfunc carregado.
-        ground_truth: Itens relevantes por usuario.
+        ground_truth: Itens relevantes por usuário.
 
     Returns:
-        Valor da metrica ``harmonic_mean_at_10``.
+        Valor da métrica ``harmonic_mean_at_10``.
     """
     recommended = predict_batch(model, ground_truth, limit=max(K_VALUES))
     metrics = compute_recommender_metrics(ground_truth, recommended, K_VALUES)
@@ -195,16 +195,16 @@ def evaluate_staging(model: Any, ground_truth: dict[str, set[str]]) -> float:
 
 
 def harmonic_mean_at_k(metrics: dict[str, float], k: int = 10) -> float:
-    """Computa a media harmonica das 4 metricas canonicas em K.
+    """Computa a media harmonica das 4 métricas canônicas em K.
 
     Args:
-        metrics: Dicionario com chaves no formato ``metrica@K``
+        metrics: Dicionario com chaves no formato ``métrica@K``
             (ex: ``precision@10``).
         k: Valor de K para o calculo.
 
     Returns:
         Media harmonica de precision/recall/ndcg/map@K. Retorna 0.0
-        se alguma metrica for ausente ou zero.
+        se alguma métrica for ausente ou zero.
     """
     keys = (f"precision@{k}", f"recall@{k}", f"ndcg@{k}", f"map@{k}")
     values = [metrics.get(key) for key in keys]
@@ -217,13 +217,13 @@ def harmonic_mean_at_k(metrics: dict[str, float], k: int = 10) -> float:
 
 
 def load_reference_harmonic_mean(csv_path: str) -> float | None:
-    """Le a media harmonica @10 do campeao no CSV comparativo.
+    """Le a media harmonica @10 do campeão no CSV comparativo.
 
     Args:
         csv_path: Caminho do CSV ``model_comparison.csv``.
 
     Returns:
-        Valor da media harmonica do primeiro modelo (campeao) ou None.
+        Valor da media harmonica do primeiro modelo (campeão) ou None.
     """
     path = Path(csv_path)
     if not path.exists():
@@ -242,14 +242,14 @@ def validate_and_promote(
     reference_csv: str,
     dry_run: bool,
 ) -> str:
-    """Valida a versao em Staging e promove para Production se aprovada.
+    """Valida a versão em Staging e promove para Production se aprovada.
 
     Args:
         model_name: Nome do modelo no Registry.
-        tolerance: Tolerancia relativa aceitavel.
+        tolerance: Tolerancia relativa aceitável.
         test_path: Caminho do parquet de teste.
-        reference_csv: CSV comparativo com a metrica de referencia.
-        dry_run: Se True, nao promove para Production.
+        reference_csv: CSV comparativo com a métrica de referência.
+        dry_run: Se True, não promove para Production.
 
     Returns:
         Versao avaliada.
@@ -260,7 +260,7 @@ def validate_and_promote(
     reference = load_reference_harmonic_mean(reference_csv)
 
     logger.info(
-        "Staging %s versao %s: harmonic_mean@10=%.4f (referencia=%s)",
+        "Staging %s versão %s: harmonic_mean@10=%.4f (referência=%s)",
         model_name,
         version,
         observed,
@@ -269,19 +269,19 @@ def validate_and_promote(
 
     if reference is not None:
         if reference <= 0:
-            msg = "Referencia de harmonic_mean@10 e zero; abortando promocao."
+            msg = "Referência de harmonic_mean@10 e zero; abortando promoção."
             raise RuntimeError(msg)
         relative_diff = abs(observed - reference) / reference
         if relative_diff > tolerance:
             msg = (
                 f"Validacao falhou: |{observed:.4f} - {reference:.4f}|/"
-                f"{reference:.4f} = {relative_diff:.4%} > tolerancia {tolerance:.4%}."
+                f"{reference:.4f} = {relative_diff:.4%} > tolerância {tolerance:.4%}."
             )
             raise RuntimeError(msg)
-        logger.info("Validacao aprovada (tolerancia %.2f%%).", tolerance * 100)
+        logger.info("Validacao aprovada (tolerância %.2f%%).", tolerance * 100)
 
     if dry_run:
-        logger.info("Dry-run: sem promocao para Production.")
+        logger.info("Dry-run: sem promoção para Production.")
         return version
 
     client = mlflow.tracking.MlflowClient()
@@ -289,7 +289,7 @@ def validate_and_promote(
         client, model_name, version, PRODUCTION_STAGE, archive_existing=True
     )
     logger.info(
-        "Modelo %s versao %s promovido para %s.",
+        "Modelo %s versão %s promovido para %s.",
         model_name,
         version,
         PRODUCTION_STAGE,
@@ -305,13 +305,13 @@ def run(
     dry_run: bool,
     registry_experiment_name: str | None,
 ) -> str:
-    """Executa validacao em Staging e promocao para Production.
+    """Executa validação em Staging e promoção para Production.
 
     Args:
         model_name: Nome do modelo no Registry.
-        tolerance: Tolerancia relativa aceitavel.
+        tolerance: Tolerancia relativa aceitável.
         test_path: Caminho do parquet de teste.
-        reference_csv: CSV comparativo com a metrica de referencia.
+        reference_csv: CSV comparativo com a métrica de referência.
         dry_run: Se True, avalia sem promover.
         registry_experiment_name: Nome do experimento MLflow de registro.
 
@@ -335,10 +335,10 @@ def run(
 
 
 def main() -> int:
-    """Ponto de entrada do script de promocao.
+    """Ponto de entrada do script de promoção.
 
     Returns:
-        Codigo de saida (0 sucesso, 1 erro).
+        Codigo de saída (0 sucesso, 1 erro).
     """
     args = parse_args()
     try:
@@ -353,7 +353,7 @@ def main() -> int:
         print(f"Versao avaliada: {version}")
         return 0
     except Exception:
-        logger.exception("Erro na promocao para Production")
+        logger.exception("Erro na promoção para Production")
         return 1
 
 

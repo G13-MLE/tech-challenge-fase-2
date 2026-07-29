@@ -109,6 +109,6 @@ def test_list_versions_handles_no_versions(capsys: pytest.CaptureFixture[str]) -
         rc = list_versions("M", stage=None)
         captured = capsys.readouterr()
         assert rc == 0
-        assert "Nenhuma versao" in captured.out
+        assert "Nenhuma versão" in captured.out
     finally:
         lm.mlflow = original_client  # type: ignore[attr-defined]

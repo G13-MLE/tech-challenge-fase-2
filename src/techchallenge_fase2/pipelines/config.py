@@ -29,11 +29,11 @@ class PathParams:
 class PreprocessParams:
     """Preprocessing behavior.
 
-    A filtragem do catalogo e dos usuarios e uma decisao de design documentada
-    da literatura de sistemas de recomendacao para tornar o problema tratavel
-    em datasets esparsos (RetailRocket tem ~2 interacoes/usuario em catalogo de
+    A filtragem do catalogo e dos usuários e uma decisão de design documentada
+    da literatura de sistemas de recomendação para tornar o problema tratável
+    em datasets esparsos (RetailRocket tem ~2 interações/usuário em catalogo de
     235k itens): mantemos apenas os top `max_items` itens mais populares e
-    usuarios com pelo menos `min_interactions_per_user` interacoes.
+    usuários com pelo menos `min_interactions_per_user` interações.
     """
 
     sample_size: int

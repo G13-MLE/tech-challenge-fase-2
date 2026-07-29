@@ -1,11 +1,11 @@
-"""Baselines scikit-learn para recomendacao.
+"""Baselines scikit-learn para recomendação.
 
 Implementa dois paradigmas de baseline:
 - ItemKNNRecommender: vizinhanca por similaridade cosseno entre itens.
 - LogisticRegressionRecommender: formulacao binaria user x item com
-  sampling de negativos por usuario.
+  sampling de negativos por usuário.
 
-Ambos seguem o contrato `RecommenderModel` para integracao no Factory.
+Ambos seguem o contrato `RecommenderModel` para integração no Factory.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ class ItemKNNConfig:
     """Configuracao do recomendador ItemKNN.
 
     Args:
-        n_neighbors: Numero de vizinhos mais proximos por item.
+        n_neighbors: Numero de vizinhos mais próximos por item.
         metric: Metrica de similaridade passada ao NearestNeighbors.
     """
 
@@ -35,10 +35,10 @@ class ItemKNNConfig:
 
 
 class ItemKNNRecommender(RecommenderModel):
-    """Recomendador por vizinhos mais proximos de itens (item-item KNN).
+    """Recomendador por vizinhos mais próximos de itens (item-item KNN).
 
     Aprende similaridades entre itens a partir da co-ocorrencia em
-    historicos de usuarios e recomenda itens similares aos consumidos.
+    históricos de usuários e recomenda itens similares aos consumidos.
     """
 
     def __init__(
@@ -49,7 +49,7 @@ class ItemKNNRecommender(RecommenderModel):
         """Inicializa o recomendador ItemKNN.
 
         Args:
-            default_limit: Numero padrao de itens retornados por recomendacao.
+            default_limit: Numero padrão de itens retornados por recomendação.
             config: Hiperparametros do KNN. Usa defaults se None.
         """
         self._default_limit = default_limit
@@ -76,11 +76,11 @@ class ItemKNNRecommender(RecommenderModel):
         self._knn = self.fit_knn(self._item_vectors.T)
 
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
-        """Recomenda itens agregando vizinhos dos itens ja consumidos.
+        """Recomenda itens agregando vizinhos dos itens já consumidos.
 
         Args:
-            user_id: Identificador do usuario como string.
-            limit: Numero maximo de itens a recomendar.
+            user_id: Identificador do usuário como string.
+            limit: Numero máximo de itens a recomendar.
 
         Returns:
             Identificadores dos itens recomendados, ordenados por score.
@@ -94,7 +94,7 @@ class ItemKNNRecommender(RecommenderModel):
         return self.recommend_warm_start(user_idx, recommendation_limit)
 
     def build_mappings(self, interactions: list[Interaction]) -> None:
-        """Constroi mapeamentos str<->int para usuarios e itens."""
+        """Constrói mapeamentos str<->int para usuários e itens."""
         user_ids = {uid for uid, _ in interactions}
         item_ids = {iid for _, iid in interactions}
         self._user_to_idx = {uid: idx for idx, uid in enumerate(sorted(user_ids))}
@@ -102,7 +102,7 @@ class ItemKNNRecommender(RecommenderModel):
         self._idx_to_item = {idx: iid for iid, idx in self._item_to_idx.items()}
 
     def build_seen_items(self, interactions: list[Interaction]) -> None:
-        """Registra itens ja consumidos por usuario (indices internos int)."""
+        """Registra itens já consumidos por usuário (índices internos int)."""
         self._seen_items.clear()
         for user_id, item_id in interactions:
             user_idx = self._user_to_idx.get(user_id)
@@ -111,7 +111,7 @@ class ItemKNNRecommender(RecommenderModel):
                 self._seen_items.setdefault(user_idx, set()).add(item_idx)
 
     def build_sparse_matrix(self, interactions: list[Interaction]) -> sp.csr_matrix:
-        """Constroi a matriz esparsa user-item com feedback implicito binario."""
+        """Constrói a matriz esparsa user-item com feedback implicito binario."""
         rows, cols = [], []
         for user_id, item_id in interactions:
             user_idx = self._user_to_idx.get(user_id)
@@ -135,25 +135,25 @@ class ItemKNNRecommender(RecommenderModel):
         return knn
 
     def recommend_warm_start(self, user_idx: int, limit: int) -> list[str]:
-        """Gera recomendacoes por agregacao de vizinhos dos itens consumidos."""
+        """Gera recomendações por agregação de vizinhos dos itens consumidos."""
         scores = self.aggregate_scores(user_idx)
         self.exclude_seen_items(user_idx, scores)
         return self.top_items_from_scores(scores, limit)
 
     def aggregate_scores(self, user_idx: int) -> np.ndarray:
-        """Soma similaridades dos vizinhos dos itens consumidos pelo usuario."""
+        """Soma similaridades dos vizinhos dos itens consumidos pelo usuário."""
         n_items = len(self._idx_to_item)
         scores = np.zeros(n_items, dtype=np.float64)
         if self._knn is None or self._item_vectors is None:
             return scores
         for item_idx in self._seen_items.get(user_idx, set()):
-            _, indices = self._knn.kneighbors(self._item_vectors.T[item_idx])
-            for neighbor_idx in indices.ravel():
+            _, índices = self._knn.kneighbors(self._item_vectors.T[item_idx])
+            for neighbor_idx in índices.ravel():
                 scores[neighbor_idx] += 1.0
         return scores
 
     def exclude_seen_items(self, user_idx: int, scores: np.ndarray) -> None:
-        """Atribui -infinito aos itens ja consumidos pelo usuario."""
+        """Atribui -infinito aos itens já consumidos pelo usuário."""
         for item_idx in self._seen_items.get(user_idx, set()):
             scores[item_idx] = float("-inf")
 
@@ -163,7 +163,7 @@ class ItemKNNRecommender(RecommenderModel):
         return [self._idx_to_item[int(idx)] for idx in top_indices]
 
     def recommend_cold_start(self, limit: int) -> list[str]:
-        """Recomenda itens mais populares para usuarios sem historico."""
+        """Recomenda itens mais populares para usuários sem histórico."""
         if self._item_popularity.size == 0:
             return []
         top_indices = np.argsort(-self._item_popularity)[:limit]
@@ -172,12 +172,12 @@ class ItemKNNRecommender(RecommenderModel):
 
 @dataclass(frozen=True, slots=True)
 class LogisticRegressionConfig:
-    """Configuracao do recomendador baseado em regressao logistica.
+    """Configuracao do recomendador baseado em regressão logistica.
 
     Args:
         negatives_per_positive: Numero de negativos amostrados por positivo.
         C: Inverso da forca de regularizacao (valores menores = mais regularizacao).
-        max_iter: Numero maximo de iteracoes do solver.
+        max_iter: Numero máximo de iterações do solver.
         random_seed: Seed para reprodutibilidade do sampling de negativos.
     """
 
@@ -188,11 +188,11 @@ class LogisticRegressionConfig:
 
 
 class LogisticRegressionRecommender(RecommenderModel):
-    """Recomendador baseado em regressao logistica binaria user x item.
+    """Recomendador baseado em regressão logistica binaria user x item.
 
-    Monta um problema de classificacao binaria com features one-hot de
-    usuario e item concatenadas, treina um LogisticRegression para prever
-    a probabilidade de interacao e pontua todos os itens para cada usuario.
+    Monta um problema de classificação binaria com features one-hot de
+    usuário e item concatenadas, treina um LogisticRegression para prever
+    a probabilidade de interação e pontua todos os itens para cada usuário.
     """
 
     def __init__(
@@ -200,11 +200,11 @@ class LogisticRegressionRecommender(RecommenderModel):
         default_limit: int = 10,
         config: LogisticRegressionConfig | None = None,
     ) -> None:
-        """Inicializa o recomendador por regressao logistica.
+        """Inicializa o recomendador por regressão logistica.
 
         Args:
-            default_limit: Numero padrao de itens retornados por recomendacao.
-            config: Hiperparametros da regressao. Usa defaults se None.
+            default_limit: Numero padrão de itens retornados por recomendação.
+            config: Hiperparametros da regressão. Usa defaults se None.
         """
         self._default_limit = default_limit
         self._config = config or LogisticRegressionConfig()
@@ -233,11 +233,11 @@ class LogisticRegressionRecommender(RecommenderModel):
         self._model = self.train_logistic(x_train, y_train)
 
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
-        """Recomenda itens por maior probabilidade predita ainda nao consumidos.
+        """Recomenda itens por maior probabilidade predita ainda não consumidos.
 
         Args:
-            user_id: Identificador do usuario como string.
-            limit: Numero maximo de itens a recomendar.
+            user_id: Identificador do usuário como string.
+            limit: Numero máximo de itens a recomendar.
 
         Returns:
             Identificadores dos itens recomendados, ordenados por probabilidade.
@@ -251,7 +251,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         return self.recommend_warm_start(user_idx, recommendation_limit)
 
     def build_mappings(self, interactions: list[Interaction]) -> None:
-        """Constroi mapeamentos str<->int para usuarios e itens."""
+        """Constrói mapeamentos str<->int para usuários e itens."""
         user_ids = {uid for uid, _ in interactions}
         item_ids = {iid for _, iid in interactions}
         self._user_to_idx = {uid: idx for idx, uid in enumerate(sorted(user_ids))}
@@ -262,7 +262,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         self._n_items = len(self._item_to_idx)
 
     def build_seen_items(self, interactions: list[Interaction]) -> None:
-        """Registra itens ja consumidos por usuario (indices internos int)."""
+        """Registra itens já consumidos por usuário (índices internos int)."""
         self._seen_items.clear()
         for user_id, item_id in interactions:
             user_idx = self._user_to_idx.get(user_id)
@@ -271,7 +271,7 @@ class LogisticRegressionRecommender(RecommenderModel):
                 self._seen_items.setdefault(user_idx, set()).add(item_idx)
 
     def compute_item_popularity(self, interactions: list[Interaction]) -> np.ndarray:
-        """Conta ocorrencias de cada item no conjunto de interacoes."""
+        """Conta ocorrencias de cada item no conjunto de interações."""
         popularity = np.zeros(self._n_items, dtype=np.float64)
         for _, item_id in interactions:
             item_idx = self._item_to_idx.get(item_id)
@@ -293,7 +293,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         return x_train, labels
 
     def collect_positives(self) -> np.ndarray:
-        """Coleta pares (user_idx, item_idx) das interacoes positivas."""
+        """Coleta pares (user_idx, item_idx) das interações positivas."""
         rows, cols = [], []
         for user_idx, items in self._seen_items.items():
             for item_idx in items:
@@ -304,10 +304,10 @@ class LogisticRegressionRecommender(RecommenderModel):
         return np.array(list(zip(rows, cols, strict=False)), dtype=np.int64)
 
     def sample_negatives(self, n_positives: int) -> np.ndarray:
-        """Amostra negativos (user, item nao consumido) por positivo.
+        """Amostra negativos (user, item não consumido) por positivo.
 
-        Rejeita candidatos que sao positivos do usuario para evitar ruido
-        de label, seguindo o mesmo padrao dos samplers NCF e BPR.
+        Rejeita candidatos que são positivos do usuário para evitar ruido
+        de label, seguindo o mesmo padrão dos samplers NCF e BPR.
         """
         if n_positives == 0 or self._n_users == 0 or self._n_items == 0:
             return np.empty((0, 2), dtype=np.int64)
@@ -327,7 +327,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         return np.array(negatives, dtype=np.int64)
 
     def build_onehot_features(self, pairs: np.ndarray) -> sp.csr_matrix:
-        """Constroi features esparsas concatenando one-hot de user e item.
+        """Constrói features esparsas concatenando one-hot de user e item.
 
         Args:
             pairs: Array (N, 2) com colunas [user_idx, item_idx].
@@ -360,9 +360,9 @@ class LogisticRegressionRecommender(RecommenderModel):
         return model
 
     def recommend_warm_start(self, user_idx: int, limit: int) -> list[str]:
-        """Pontua todos os itens para o usuario e retorna os top-L nao vistos."""
+        """Pontua todos os itens para o usuário e retorna os top-L não vistos."""
         if self._model is None:
-            raise RuntimeError("Modelo nao treinado")
+            raise RuntimeError("Modelo não treinado")
         x_candidates = self.build_candidate_features(user_idx)
         scores = self._model.decision_function(x_candidates)
         self.exclude_seen_items(user_idx, scores)
@@ -372,7 +372,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         """Constoi features one-hot user + item para todos os itens candidatos.
 
         A matriz resultante tem shape (n_items, n_users + n_items): cada
-        linha i possui one-hot do usuario na primeira metade e one-hot do
+        linha i possui one-hot do usuário na primeira metade e one-hot do
         item i na segunda metade.
         """
         n_items = self._n_items
@@ -395,7 +395,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         return sp.hstack([user_part, item_part]).tocsr()
 
     def exclude_seen_items(self, user_idx: int, scores: np.ndarray) -> None:
-        """Atribui -infinito aos itens ja consumidos pelo usuario."""
+        """Atribui -infinito aos itens já consumidos pelo usuário."""
         for item_idx in self._seen_items.get(user_idx, set()):
             scores[item_idx] = float("-inf")
 
@@ -405,7 +405,7 @@ class LogisticRegressionRecommender(RecommenderModel):
         return [self._idx_to_item[int(idx)] for idx in top_indices]
 
     def recommend_cold_start(self, limit: int) -> list[str]:
-        """Recomenda itens mais populares para usuarios sem historico."""
+        """Recomenda itens mais populares para usuários sem histórico."""
         if self._item_popularity.size == 0:
             return []
         top_indices = np.argsort(-self._item_popularity)[:limit]

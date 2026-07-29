@@ -1,9 +1,9 @@
-"""Estrategias de divisao treino/teste para dados de interacao.
+"""Estrategias de divisao treino/teste para dados de interação.
 
-Fornece duas estrategias de split cronologico:
-- `chronological_holdout_split`: 2-way (treino/teste) para avaliacao final.
-- `chronological_train_val_test_split`: 3-way (treino/validacao/teste)
-  com razao 70/15/15 por padrao, para selecao de hiperparametros e
+Fornece duas estratégias de split cronológico:
+- `chronological_holdout_split`: 2-way (treino/teste) para avaliação final.
+- `chronological_train_val_test_split`: 3-way (treino/validação/teste)
+  com razao 70/15/15 por padrão, para seleção de hiperparametros e
   early stopping, conforme o plano da issue #15.
 """
 
@@ -18,7 +18,7 @@ from techchallenge_fase2.models.base import Interaction
 
 @dataclass(frozen=True, slots=True)
 class ChronologicalSplit:
-    """Resultado de um split cronologico global (2-way).
+    """Resultado de um split cronológico global (2-way).
 
     Args:
         train_interactions: Interacoes reservadas para treino.
@@ -35,16 +35,16 @@ class ChronologicalSplit:
 
 @dataclass(frozen=True, slots=True)
 class ChronologicalThreeWaySplit:
-    """Resultado de um split cronologico global (3-way: treino/val/teste).
+    """Resultado de um split cronológico global (3-way: treino/val/teste).
 
     Args:
         train_interactions: Interacoes reservadas para treino (70%).
-        val_interactions: Interacoes reservadas para validacao (15%).
+        val_interactions: Interacoes reservadas para validação (15%).
         test_interactions: Interacoes reservadas para teste (15%).
-        val_ground_truth: Mapeamento user_id -> itens relevantes na validacao.
+        val_ground_truth: Mapeamento user_id -> itens relevantes na validação.
         test_ground_truth: Mapeamento user_id -> itens relevantes no teste.
-        train_cutoff: Timestamp do corte entre treino e validacao.
-        val_cutoff: Timestamp do corte entre validacao e teste.
+        train_cutoff: Timestamp do corte entre treino e validação.
+        val_cutoff: Timestamp do corte entre validação e teste.
     """
 
     train_interactions: list[Interaction]
@@ -61,16 +61,16 @@ def chronological_holdout_split(
     test_ratio: float = 0.15,
     timestamp_col: str = "timestamp",
 ) -> ChronologicalSplit:
-    """Divide interacoes em treino e teste usando corte temporal global.
+    """Divide interações em treino e teste usando corte temporal global.
 
-    Ordena interacoes por timestamp e separa as mais recentes para teste,
-    reproduzindo o cenario real de previsao do futuro.
+    Ordena interações por timestamp e separa as mais recentes para teste,
+    reproduzindo o cenario real de previsão do futuro.
 
     Args:
         interactions_df: DataFrame com colunas 'user_id', 'item_id' e
             a coluna de timestamp informada.
-        test_ratio: Fracao das interacoes mais recentes reservada para teste.
-        timestamp_col: Nome da coluna de timestamp para ordenacao cronologica.
+        test_ratio: Fracao das interações mais recentes reservada para teste.
+        timestamp_col: Nome da coluna de timestamp para ordenacao cronológica.
 
     Returns:
         Objeto ChronologicalSplit com treino, teste e ground truth.
@@ -99,21 +99,21 @@ def chronological_train_val_test_split(
     test_ratio: float = 0.15,
     timestamp_col: str = "timestamp",
 ) -> ChronologicalThreeWaySplit:
-    """Divide interacoes em treino/validacao/teste com corte temporal global.
+    """Divide interações em treino/validação/teste com corte temporal global.
 
-    Ordena interacoes por timestamp e separa as fracoes mais recentes
-    para validacao e teste. Por padrao usa 70/15/15, conforme o plano da
-    issue #15, reproduzindo o cenario real de previsao do futuro.
+    Ordena interações por timestamp e separa as fracoes mais recentes
+    para validação e teste. Por padrão usa 70/15/15, conforme o plano da
+    issue #15, reproduzindo o cenario real de previsão do futuro.
 
     Args:
         interactions_df: DataFrame com colunas 'user_id', 'item_id' e
             a coluna de timestamp informada.
-        val_ratio: Fracao das interacoes reservada para validacao.
-        test_ratio: Fracao das interacoes mais recentes reservada para teste.
-        timestamp_col: Nome da coluna de timestamp para ordenacao cronologica.
+        val_ratio: Fracao das interações reservada para validação.
+        test_ratio: Fracao das interações mais recentes reservada para teste.
+        timestamp_col: Nome da coluna de timestamp para ordenacao cronológica.
 
     Returns:
-        Objeto ChronologicalThreeWaySplit com treino, validacao, teste
+        Objeto ChronologicalThreeWaySplit com treino, validação, teste
         e os respectivos ground truths.
     """
     ordered = interactions_df.sort_values(timestamp_col).reset_index(drop=True)
@@ -147,11 +147,11 @@ def filter_warm_start(
 ) -> ChronologicalSplit:
     """Remove cold-start users e itens do ground truth.
 
-    Mantem apenas usuarios e itens presentes no treino para que todos os
-    modelos possam gerar predicoes (EASE^ e KNN nao suportam cold-start).
+    Mantem apenas usuários e itens presentes no treino para que todos os
+    modelos possam gerar predições (EASE^ e KNN não suportam cold-start).
 
     Args:
-        split: Resultado de um split cronologico.
+        split: Resultado de um split cronológico.
 
     Returns:
         Novo ChronologicalSplit com ground truth filtrado.
@@ -179,13 +179,13 @@ def filter_warm_start(
 def filter_warm_start_three_way(
     split: ChronologicalThreeWaySplit,
 ) -> ChronologicalThreeWaySplit:
-    """Remove cold-start users e itens do ground truth de validacao e teste.
+    """Remove cold-start users e itens do ground truth de validação e teste.
 
-    Mantem apenas usuarios e itens presentes no treino para que todos os
-    modelos possam gerar predicoes (EASE^ e KNN nao suportam cold-start).
+    Mantem apenas usuários e itens presentes no treino para que todos os
+    modelos possam gerar predições (EASE^ e KNN não suportam cold-start).
 
     Args:
-        split: Resultado de um split cronologico 3-way.
+        split: Resultado de um split cronológico 3-way.
 
     Returns:
         Novo ChronologicalThreeWaySplit com ground truths filtrados.
@@ -214,7 +214,7 @@ def filter_ground_truth(
     train_users: set[str],
     train_items: set[str],
 ) -> tuple[dict[str, set[str]], list[Interaction]]:
-    """Filtra usuarios e itens do ground truth mantendo apenas warm-start."""
+    """Filtra usuários e itens do ground truth mantendo apenas warm-start."""
     filtered_truth: dict[str, set[str]] = {}
     filtered_interactions: list[Interaction] = []
     for user_id, items in ground_truth.items():
@@ -234,7 +234,7 @@ def materialize_interactions(df: pd.DataFrame) -> list[Interaction]:
 
 
 def build_ground_truth(test_df: pd.DataFrame) -> dict[str, set[str]]:
-    """Agrupa itens relevantes por usuario a partir do DataFrame de teste."""
+    """Agrupa itens relevantes por usuário a partir do DataFrame de teste."""
     truth: dict[str, set[str]] = {}
     grouped = test_df.groupby("user_id")["item_id"].apply(set)
     for user_id, items in grouped.items():

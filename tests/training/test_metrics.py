@@ -72,7 +72,7 @@ class TestRecallAtK:
 
     @staticmethod
     def test_all_relevant_found() -> None:
-        """Todos os itens relevantes estao nos K primeiros."""
+        """Todos os itens relevantes estão nos K primeiros."""
         relevant = {"a", "b"}
         recommended = ["a", "b", "c", "d", "e"]
         assert recall_at_k(relevant, recommended, 2) == 1.0

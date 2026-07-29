@@ -1,4 +1,4 @@
-"""Testes de checkpoints do modulo training."""
+"""Testes de checkpoints do módulo training."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def test_save_e_load_checkpoint_restaura_estado(tmp_path: Path) -> None:
 
 
 def test_save_best_e_load_model_from_checkpoint(tmp_path: Path) -> None:
-    """Melhor checkpoint reconstrui NCF pronto para avaliacao."""
+    """Melhor checkpoint reconstrói NCF pronto para avaliação."""
     model = _model()
     path = tmp_path / "best.pt"
 

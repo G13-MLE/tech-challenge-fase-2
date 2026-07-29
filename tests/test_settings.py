@@ -61,8 +61,8 @@ def test_settings_defaults(clear_env: None) -> None:
 def test_env_example_declares_mlflow_comparison_experiment_name() -> None:
     """O .env.example deve documentar MLFLOW_COMPARISON_EXPERIMENT_NAME.
 
-    As tres variaveis irmao (NCF, EASE, BASELINE) ja sao declaradas; a
-    de comparacao estava faltando, impedindo configuracao via .env.
+    As três variáveis irmão (NCF, EASE, BASELINE) já são declaradas; a
+    de comparação estava faltando, impedindo configuração via .env.
     """
     env_example = Path(__file__).resolve().parent.parent / ".env.example"
     content = env_example.read_text(encoding="utf-8")

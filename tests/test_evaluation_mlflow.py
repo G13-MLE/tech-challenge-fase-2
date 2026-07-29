@@ -1,7 +1,7 @@
-"""Testes da integracao MLflow do estagio de avaliacao (pipeline.evaluation).
+"""Testes da integração MLflow do estagio de avaliação (pipeline.evaluation).
 
-Os testes mockam o modulo ``mlflow`` para evitar dependencia de servidor
-real e validar que os utilitarios de tracking sao chamados corretamente.
+Os testes mockam o módulo ``mlflow`` para evitar dependência de servidor
+real e validar que os utilitarios de tracking são chamados corretamente.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from techchallenge_fase2.pipelines.config import (
 
 
 def build_params(tmp_path: Path) -> PipelineParams:
-    """Constroi PipelineParams valido apontando para tmp_path."""
+    """Constrói PipelineParams valido apontando para tmp_path."""
     return PipelineParams(
         paths=PathParams(
             raw_events=tmp_path / "raw_events.csv",
@@ -63,7 +63,7 @@ def build_params(tmp_path: Path) -> PipelineParams:
 
 
 def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
-    """Escreve um parquet minimo de features com colunas user_index/item_index."""
+    """Escreve um parquet mínimo de features com colunas user_index/item_index."""
     rows: list[dict[str, int]] = []
     for user in range(num_users):
         for item in range(num_items):
@@ -72,7 +72,7 @@ def write_features(path: Path, num_users: int = 4, num_items: int = 4) -> None:
 
 
 def build_checkpoint(num_users: int = 4, num_items: int = 4) -> dict[str, Any]:
-    """Constroi um checkpoint minimo compativel com load_model."""
+    """Constrói um checkpoint mínimo compatível com load_model."""
     from techchallenge_fase2.models.ncf import (
         NCFConfig,
         NeuralCollaborativeFiltering,
@@ -96,7 +96,7 @@ def build_checkpoint(num_users: int = 4, num_items: int = 4) -> dict[str, Any]:
 
 @pytest.fixture
 def setup_eval_env(tmp_path: Path) -> tuple[PipelineParams, dict[str, Any]]:
-    """Prepara features, checkpoint e params para os testes de avaliacao."""
+    """Prepara features, checkpoint e params para os testes de avaliação."""
     params = build_params(tmp_path)
     write_features(params.paths.train_features)
     write_features(params.paths.test_features)
@@ -105,13 +105,13 @@ def setup_eval_env(tmp_path: Path) -> tuple[PipelineParams, dict[str, Any]]:
 
 
 class TestBuildEvaluationHyperparameters:
-    """Valida construcao do dict de hiperparametros de avaliacao."""
+    """Valida construção do dict de hiperparametros de avaliação."""
 
     @staticmethod
     def test_inclui_hiperparametros_chave(
         setup_eval_env: tuple[PipelineParams, dict[str, Any]],
     ) -> None:
-        """Hiperparametros de avaliacao e checkpoint estao presentes."""
+        """Hiperparametros de avaliação e checkpoint estão presentes."""
         params, checkpoint = setup_eval_env
         hyperparams = evaluation_module.build_evaluation_hyperparameters(
             params, checkpoint, num_evaluated_users=10, dataset_version="abc12345"
@@ -129,7 +129,7 @@ class TestBuildEvaluationHyperparameters:
 
 
 class TestCardMetrics:
-    """Valida o mapeamento das metricas agregadas para o Model Card."""
+    """Valida o mapeamento das métricas agregadas para o Model Card."""
 
     @staticmethod
     def test_mapeia_chaves_at_para_arroba() -> None:
@@ -168,7 +168,7 @@ class TestLogEvaluationRun:
         setup_eval_env: tuple[PipelineParams, dict[str, Any]],
         tmp_path: Path,
     ) -> None:
-        """Todos os utilitarios de tracking sao chamados durante o run."""
+        """Todos os utilitarios de tracking são chamados durante o run."""
         params, checkpoint = setup_eval_env
         metrics = {
             "hit_rate_at_5": 0.6,
@@ -178,7 +178,7 @@ class TestLogEvaluationRun:
             "recall_at_5": 0.2,
             "evaluated_users": 10.0,
         }
-        # Salva o arquivo de metricas para que log_artifacts o encontre.
+        # Salva o arquivo de métricas para que log_artifacts o encontre.
         evaluation_module.save_metrics(metrics, params.paths.metrics)
 
         evaluation_module.log_evaluation_run(
@@ -210,7 +210,7 @@ class TestLogEvaluationRun:
         mock_mlflow: MagicMock,
         setup_eval_env: tuple[PipelineParams, dict[str, Any]],
     ) -> None:
-        """Tags distinguem o run de avaliacao do NCF orquestrado pelo DVC."""
+        """Tags distinguem o run de avaliação do NCF orquestrado pelo DVC."""
         params, checkpoint = setup_eval_env
         metrics = {"evaluated_users": 5.0}
 

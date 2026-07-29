@@ -1,12 +1,12 @@
-"""Pipeline de comparacao entre modelos de recomendacao e baselines.
+"""Pipeline de comparação entre modelos de recomendação e baselines.
 
-Orquestra o fluxo completo de comparacao:
-1. Carrega configuracao e ambiente
-2. Carrega dados de interacoes
-3. Divide em treino/teste (split cronologico global)
-4. Treina e avalia todos os modelos (baselines + candidato a campeao)
-5. Compara usando no minimo 4 metricas (precision, recall, NDCG, MAP)
-6. Declara o campeao e gera relatorio comparativo
+Orquestra o fluxo completo de comparação:
+1. Carrega configuração e ambiente
+2. Carrega dados de interações
+3. Divide em treino/teste (split cronológico global)
+4. Treina e avalia todos os modelos (baselines + candidato a campeão)
+5. Compara usando no mínimo 4 métricas (precision, recall, NDCG, MAP)
+6. Declara o campeão e gera relatório comparativo
 7. Registra tudo no MLflow
 
 Uso:
@@ -76,7 +76,7 @@ from techchallenge_fase2.training.plots import (
 
 logger = logging.getLogger(__name__)
 
-# Metricas canonicas para a comparacao (no minimo 4)
+# Metricas canônicas para a comparação (no mínimo 4)
 COMPARISON_METRICS = ("precision", "recall", "ndcg", "map")
 DEFAULT_EXPERIMENT_NAME = "tech-challenge-comparison"
 CHAMPION_K = 10
@@ -89,23 +89,23 @@ def parse_args() -> argparse.Namespace:
         Namespace com os argumentos parseados.
     """
     parser = argparse.ArgumentParser(
-        description="Comparacao de modelos de recomendacao vs baselines"
+        description="Comparacao de modelos de recomendação vs baselines"
     )
     parser.add_argument(
         "--data-dir",
         default="data/processed",
         help=(
             "Diretorio de dados. Default 'data/processed' usa o "
-            "interactions.parquet ja filtrado pelo stage preprocess "
-            "(top-10000 itens, >=5 interacoes/usuario). Use 'data/raw' "
-            "para o dataset bruto (nao recomendado - metricas ~0)."
+            "interactions.parquet já filtrado pelo stage preprocess "
+            "(top-10000 itens, >=5 interações/usuário). Use 'data/raw' "
+            "para o dataset bruto (não recomendado - métricas ~0)."
         ),
     )
     parser.add_argument(
         "--test-ratio",
         type=float,
         default=0.15,
-        help="Fracao de interacoes para teste (default: 0.15, com 70/15/15)",
+        help="Fracao de interações para teste (default: 0.15, com 70/15/15)",
     )
     parser.add_argument(
         "--random-seed",
@@ -124,7 +124,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Lista separada por virgulas de modelos a pular "
             "(ex.: item_knn,logistic_regression,neural_ncf). "
-            "Pratico para datasets grandes em que alguns modelos nao escalam."
+            "Pratico para datasets grandes em que alguns modelos não escalam."
         ),
     )
     parser.add_argument(
@@ -132,11 +132,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=1000,
         help=(
-            "Numero maximo de usuarios do conjunto de teste a avaliar "
+            "Numero máximo de usuários do conjunto de teste a avaliar "
             "(default: 1000). Em datasets reais (ex.: RetailRocket 1.4M "
-            "usuarios x 235k itens), avaliar todos os usuarios warm-start "
-            "do teste e proibitivo em memoria/tempo; esta amostra "
-            "deterministica e suficiente para comparacao e mantem baixo "
+            "usuários x 235k itens), avaliar todos os usuários warm-start "
+            "do teste e proibitivo em memória/tempo; esta amostra "
+            "deterministica e suficiente para comparação e mantem baixo "
             "os requisitos de RAM."
         ),
     )
@@ -149,11 +149,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_model_config(model_name: str, k_values: tuple[int, ...]) -> ModelConfig:
-    """Constroi a configuracao apropriada para cada modelo.
+    """Constrói a configuração apropriada para cada modelo.
 
     Args:
         model_name: Nome do modelo (valor do ModelType).
-        k_values: Valores de K para as metricas.
+        k_values: Valores de K para as métricas.
 
     Returns:
         ModelConfig configurado para o modelo.
@@ -183,7 +183,7 @@ def time_fit(model: Any, interactions: list[Interaction]) -> float:
 def time_recommend(
     model: Any, ground_truth: dict[str, set[str]], limit: int
 ) -> tuple[dict[str, list[str]], float]:
-    """Mede o tempo total de inferencia e retorna recomendacoes."""
+    """Mede o tempo total de inferencia e retorna recomendações."""
     t0 = time.perf_counter()
     recommended: dict[str, list[str]] = {}
     for user_id in ground_truth:
@@ -192,9 +192,9 @@ def time_recommend(
 
 
 def sanitize_metric_names(metrics: dict[str, float]) -> dict[str, float]:
-    """Sanitiza nomes de metricas para compatibilidade com MLflow.
+    """Sanitiza nomes de métricas para compatibilidade com MLflow.
 
-    MLflow nao aceita '@' em nomes de metricas; substitui por '_at_'.
+    MLflow não aceita '@' em nomes de métricas; substitui por '_at_'.
     """
     return {key.replace("@", "_at_"): value for key, value in metrics.items()}
 
@@ -208,22 +208,22 @@ def evaluate_all_models(  # noqa: PLR0913
     max_users: int = 1000,
     random_seed: int = 42,
 ) -> tuple[list[ModelResult], dict[str, Any]]:
-    """Treina e avalia todos os modelos para comparacao.
+    """Treina e avalia todos os modelos para comparação.
 
     Args:
         train_interactions: Interacoes de treino.
-        ground_truth: Itens relevantes por usuario para avaliacao.
-        k_values: Valores de K para computar metricas.
-        skip_ease: Se True, pula o EASE^ na avaliacao.
+        ground_truth: Itens relevantes por usuário para avaliação.
+        k_values: Valores de K para computar métricas.
+        skip_ease: Se True, pula o EASE^ na avaliação.
         skip_models: Lista separada por virgulas de modelos a pular.
-        max_users: Limite deterministico de usuarios avaliados para conter
+        max_users: Limite deterministico de usuários avaliados para conter
             custo de inferencia em datasets reais; 0 desativa o limite.
         random_seed: Seed para reprodutibilidade.
 
     Returns:
         Tupla com:
         - Lista de ModelResult com resultados estruturados por modelo.
-        - Dicionario mapeando nome do modelo para instancia treinada.
+        - Dicionario mapeando nome do modelo para instância treinada.
     """
     _ = random_seed
     factory = RecommenderModelFactory.default()
@@ -242,16 +242,16 @@ def evaluate_all_models(  # noqa: PLR0913
             ", ".join(sorted(skipped)),
         )
 
-    # Subamostra deterministica o pool de usuarios para avaliacao.
-    # Em datasets reais (1.4M usuarios x 235k itens) avaliar todos os
-    # usuarios warm-start do teste e proibitivo; max_users mantem baixo
-    # o custo de inferencia sem comprometer a comparacao entre modelos.
+    # Subamostra deterministica o pool de usuários para avaliação.
+    # Em datasets reais (1.4M usuários x 235k itens) avaliar todos os
+    # usuários warm-start do teste e proibitivo; max_users mantem baixo
+    # o custo de inferencia sem comprometer a comparação entre modelos.
     eval_users = list(ground_truth.keys())
     if max_users > 0 and len(eval_users) > max_users:
         eval_users_sorted = sorted(eval_users)
         eval_users = eval_users_sorted[:max_users]
         logger.info(
-            "Avaliacao limitada a %d/%d usuarios do ground_truth (--max-users)",
+            "Avaliacao limitada a %d/%d usuários do ground_truth (--max-users)",
             len(eval_users),
             len(ground_truth),
         )
@@ -272,13 +272,13 @@ def evaluate_all_models(  # noqa: PLR0913
             metrics = compute_recommender_metrics(
                 eval_ground_truth, recommended, k_values
             )
+            trained_models[model_name] = model
         except Exception as exc:
             logger.warning("Modelo %s falhou (%s); pulando.", model_name, exc)
-            # Evita reter estado grande de um modelo falho entre iteracoes.
+            # Evita reter estado grande de um modelo falho entre iterações.
             del model
             gc.collect()
             continue
-        trained_models[model_name] = model
 
         result = ModelResult(
             model_name=model_name,
@@ -301,7 +301,7 @@ def evaluate_all_models(  # noqa: PLR0913
             train_time,
             infer_time,
         )
-        # Entre modelos pesados forca liberacao de memoria (matrizes densas
+        # Entre modelos pesados forca liberacao de memória (matrizes densas
         # do ItemKNN/EASE^/LogisticRegression ocupam RAM proporcional ao
         # catalogo). Evita burst em pipelines longos no dataset completo.
         gc.collect()
@@ -314,12 +314,12 @@ def build_comparison_summary(
     k: int = CHAMPION_K,
     comparison_metrics: tuple[str, ...] = COMPARISON_METRICS,
 ) -> str:
-    """Constroi resumo textual da comparacao com no minimo 4 metricas.
+    """Constrói resumo textual da comparação com no mínimo 4 métricas.
 
     Args:
         results: Lista de ModelResult ordenados por performance.
-        k: Valor de K para comparacao.
-        comparison_metrics: Tupla com nomes das metricas canonicas.
+        k: Valor de K para comparação.
+        comparison_metrics: Tupla com nomes das métricas canônicas.
 
     Returns:
         String com resumo comparativo.
@@ -329,7 +329,7 @@ def build_comparison_summary(
 
     champion, runner_up = declare_champion(results, k)
     lines = [
-        f"Comparacao de modelos com {len(comparison_metrics)}+ metricas "
+        f"Comparacao de modelos com {len(comparison_metrics)}+ métricas "
         f"(K={k}): {', '.join(m.upper() for m in comparison_metrics)}",
         "",
     ]
@@ -349,7 +349,7 @@ def build_comparison_summary(
     if champion is not None:
         lines.append("")
         h_mean = champion.harmonic_mean_at_k(k)
-        lines.append(f"Campeao: {champion.model_name} (H-Mean@{k}={h_mean:.4f})")
+        lines.append(f"Campeão: {champion.model_name} (H-Mean@{k}={h_mean:.4f})")
         if runner_up is not None:
             gain = champion.harmonic_mean_at_k(k) - runner_up.harmonic_mean_at_k(k)
             lines.append(f"Vantagem sobre {runner_up.model_name}: +{gain:.4f}")
@@ -367,20 +367,20 @@ def run_compare_pipeline(  # noqa: PLR0913
     skip_models: str = "",
     max_users: int = 1000,
 ) -> pd.DataFrame:
-    """Executa pipeline completa de comparacao de modelos com MLflow.
+    """Executa pipeline completa de comparação de modelos com MLflow.
 
     Args:
-        data_dir: Diretorio com dados (default 'data/processed' ja filtrado).
-        test_ratio: Fracao de interacoes para teste.
+        data_dir: Diretorio com dados (default 'data/processed' já filtrado).
+        test_ratio: Fracao de interações para teste.
         random_seed: Seed para reprodutibilidade.
         skip_ease: Se True, pula o EASE^.
         experiment_name: Nome do experimento MLflow.
-        k_values: Valores de K para as metricas.
+        k_values: Valores de K para as métricas.
         skip_models: Lista separada por virgulas de modelos a pular.
-        max_users: Limite de usuarios do ground_truth a avaliar.
+        max_users: Limite de usuários do ground_truth a avaliar.
 
     Returns:
-        DataFrame comparativo com metricas por modelo.
+        DataFrame comparativo com métricas por modelo.
     """
     load_dotenv_silent()
     logging.basicConfig(
@@ -406,7 +406,7 @@ def run_compare_pipeline(  # noqa: PLR0913
         interactions_df, test_ratio=test_ratio, random_seed=random_seed
     )
 
-    # Obtem versao do dataset
+    # Obtem versão do dataset
     dataset_version = safe_get_dataset_version()
 
     # Conta popularidade dos itens para grafico
@@ -422,17 +422,17 @@ def run_compare_pipeline(  # noqa: PLR0913
         max_users,
         random_seed,
     )
-    # Numero de usuarios efetivamente avaliados (apos --max-users).
+    # Numero de usuários efetivamente avaliados (apos --max-users).
     evaluated_users_count = (
         len(model_results) and model_results[0].num_users_evaluated or 0
     )
     if evaluated_users_count:
         logger.info(
-            "Comparacao avaliou efetivamente %d usuarios por modelo",
+            "Comparacao avaliou efetivamente %d usuários por modelo",
             evaluated_users_count,
         )
 
-    # Constroi resumo dos dados de entrada
+    # Constrói resumo dos dados de entrada
     input_data_summary = build_input_data_summary(
         interactions_df=interactions_df,
         train_interactions=train_interactions,
@@ -472,10 +472,10 @@ def run_compare_pipeline(  # noqa: PLR0913
                 }
             )
 
-            # Log de informacoes de sistema
+            # Log de informações de sistema
             log_system_info(random_seed)
 
-            # Log de metricas (sanitiza nomes para MLflow: '@' -> '_at_')
+            # Log de métricas (sanitiza nomes para MLflow: '@' -> '_at_')
             log_metrics(sanitize_metric_names(metrics))
 
             # Log do resumo dos dados de entrada como artefato
@@ -492,7 +492,7 @@ def run_compare_pipeline(  # noqa: PLR0913
             mlflow.set_tag("random_seed", str(random_seed))
             mlflow.set_tag("comparison_metrics", ",".join(COMPARISON_METRICS))
 
-            # Salva e log graficos de metricas
+            # Salva e log graficos de métricas
             metrics_chart_path = (
                 reports_dir / f"comparison_metrics_{result.model_name}.png"
             )
@@ -528,7 +528,7 @@ def run_compare_pipeline(  # noqa: PLR0913
         comparison_data.append(result.to_comparison_dict())
         logger.info("Run MLflow registrada para %s", result.model_name)
 
-    # Constroi dict de metricas por modelo para grafico comparativo
+    # Constrói dict de métricas por modelo para grafico comparativo
     all_metrics_dict = {r.model_name: r.metrics for r in model_results}
 
     # Salva e log grafico comparativo
@@ -554,7 +554,7 @@ def run_compare_pipeline(  # noqa: PLR0913
     comparison_df.to_csv(comparison_path, index=False)
     logger.info("Comparativo salvo em: %s", comparison_path)
 
-    # Declara o campeao
+    # Declara o campeão
     champion, runner_up = declare_champion(model_results, k=CHAMPION_K)
 
     # Imprime resumo comparativo
@@ -562,11 +562,11 @@ def run_compare_pipeline(  # noqa: PLR0913
     print(summary)
 
     if champion is not None:
-        logger.info("Campeao declarado: %s", champion.model_name)
+        logger.info("Campeão declarado: %s", champion.model_name)
         if runner_up is not None:
             logger.info("Segundo colocado: %s", runner_up.model_name)
 
-    # Gera relatorio markdown automatico
+    # Gera relatório markdown automático
     report_content = generate_markdown_report(
         results=model_results,
         k_values=k_values,
@@ -589,7 +589,7 @@ def run_compare_pipeline(  # noqa: PLR0913
 
     # Log resumo
     logger.info(
-        "Pipeline de comparacao concluida com %d modelos avaliados",
+        "Pipeline de comparação concluída com %d modelos avaliados",
         len(model_results),
     )
     for result in model_results:
@@ -608,10 +608,10 @@ def run_compare_pipeline(  # noqa: PLR0913
 
 
 def main() -> int:
-    """Ponto de entrada do script de comparacao.
+    """Ponto de entrada do script de comparação.
 
     Returns:
-        Codigo de saida (0 para sucesso).
+        Codigo de saída (0 para sucesso).
     """
     args = parse_args()
     try:
@@ -628,10 +628,10 @@ def main() -> int:
         print(comparison_df.to_string(index=False))
         return 0
     except FileNotFoundError as e:
-        logger.error("Arquivo nao encontrado: %s", e)
+        logger.error("Arquivo não encontrado: %s", e)
         return 1
     except Exception:
-        logger.exception("Erro na execucao da pipeline de comparacao")
+        logger.exception("Erro na execução da pipeline de comparação")
         return 1
 
 

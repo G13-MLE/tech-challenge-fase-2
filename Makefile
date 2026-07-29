@@ -55,7 +55,7 @@ help:
 	@echo "  make ease             - Rodar pipeline dedicado do EASE^ no MLflow"
 	@echo "  make compare-models   - Comparar modelos vs baselines (skip ItemKNN/LogReg/NCF; 1000 users)"
 	@echo "  make compare-models-full - Comparar TODOS os modelos (alto consumo de RAM)"
-	@echo "  make register         - Registrar campeao no MLflow Model Registry (Staging)"
+	@echo "  make register         - Registrar campeão no MLflow Model Registry (Staging)"
 	@echo "  make promote          - Validar Staging e promover para Production"
 	@echo "  make inference        - Carregar modelo de Production e recomendar"
 	@echo ""
@@ -110,35 +110,35 @@ ease:
 	uv run python -m techchallenge_fase2.pipelines.run_ease
 
 # ---------------------------------------------------------------------------
-# Comparacao de modelos (min. 4 metricas: precision, recall, NDCG, MAP)
+# Comparacao de modelos (min. 4 métricas: precision, recall, NDCG, MAP)
 # ---------------------------------------------------------------------------
 # Config default do compare-models: heartbeat rapido em dataset real.
-# Pula ItemKNN/LogisticRegression/NCF (nao escalam p/ 235k itens em CPU) e
-# limita a 1000 usuarios avaliados. Deixa Popularity/RecentItems/Random/EASE^.
+# Pula ItemKNN/LogisticRegression/NCF (não escalam p/ 235k itens em CPU) e
+# limita a 1000 usuários avaliados. Deixa Popularity/RecentItems/Random/EASE^.
 COMPARE_SKIP_MODELS ?= neural_ncf,torch_embedding
 COMPARE_MAX_USERS ?= 1000
 
 compare-models:
-	@echo "Comparando modelos de recomendacao vs baselines..."
+	@echo "Comparando modelos de recomendação vs baselines..."
 	@echo "  skip_models: $(COMPARE_SKIP_MODELS)"
 	@echo "  max_users:  $(COMPARE_MAX_USERS)"
 	uv run python -m techchallenge_fase2.pipelines.run_compare_models \
 		--skip-models "$(COMPARE_SKIP_MODELS)" \
 		--max-users $(COMPARE_MAX_USERS)
-	@echo "Comparacao concluida! Relatorio em reports/model_comparison_report.md"
+	@echo "Comparacao concluída! Relatorio em reports/model_comparison_report.md"
 
 compare-models-full:
 	@echo "Comparando TODOS os modelos no dataset real (sem skip, max_users alto)..."
 	@echo "  AVISO: pode consumir muita RAM; use em maquina com >=16GB livres."
 	uv run python -m techchallenge_fase2.pipelines.run_compare_models \
 		--max-users 5000
-	@echo "Comparacao concluida! Relatorio em reports/model_comparison_report.md"
+	@echo "Comparacao concluída! Relatorio em reports/model_comparison_report.md"
 
 # ---------------------------------------------------------------------------
 # Model Registry (issue #16)
 # ---------------------------------------------------------------------------
 register:
-	@echo "Registrando campeao no MLflow Model Registry (Staging)..."
+	@echo "Registrando campeão no MLflow Model Registry (Staging)..."
 	uv run python -m techchallenge_fase2.pipelines.register_model
 
 promote:
@@ -184,7 +184,7 @@ pipeline-live:
 	uv run python -m techchallenge_fase2.pipelines.features
 	uv run python -m techchallenge_fase2.pipelines.training
 	uv run python -m techchallenge_fase2.pipelines.evaluation
-	@echo "[OK] pipeline concluido. metricas em metrics/recommendation_metrics.json"
+	@echo "[OK] pipeline concluído. métricas em metrics/recommendation_metrics.json"
 
 dvc-push:
 	uv run dvc push
@@ -217,4 +217,4 @@ mlflow-down:
 docker-train:
 	@echo "Docker: Rodando pipeline completo no container CPU (perfil train)..."
 	docker compose -f docker/docker-compose.yml --env-file .env --profile train up --build train
-	@$(PYTHON) -c "from pathlib import Path; values = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if line.startswith('MLFLOW_PORT=')); port = values.get('MLFLOW_PORT', '5000').split('#', 1)[0].strip() or '5000'; print(f'[OK] Pipeline concluido. Veja runs em http://localhost:{port} e metricas em metrics/recommendation_metrics.json')"
+	@$(PYTHON) -c "from pathlib import Path; values = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if line.startswith('MLFLOW_PORT=')); port = values.get('MLFLOW_PORT', '5000').split('#', 1)[0].strip() or '5000'; print(f'[OK] Pipeline concluído. Veja runs em http://localhost:{port} e métricas em metrics/recommendation_metrics.json')"

@@ -1,8 +1,8 @@
-"""Modelo neural de recomendacao (Neural Collaborative Filtering).
+"""Modelo neural de recomendação (Neural Collaborative Filtering).
 
 Combina um ramo GMF (Generalized Matrix Factorization) com um ramo MLP
-(Multi-Layer Perceptron) sobre embeddings de usuarios e itens, fundindo
-os dois sinais em uma unica probabilidade de interacao.
+(Multi-Layer Perceptron) sobre embeddings de usuários e itens, fundindo
+os dois sinais em uma única probabilidade de interação.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ class NCFConfig:
     """Configuracao do modelo Neural Collaborative Filtering.
 
     Args:
-        num_users: Total de usuarios unicos.
-        num_items: Total de itens unicos.
+        num_users: Total de usuários únicos.
+        num_items: Total de itens únicos.
         embedding_dim: Dimensao dos embeddings compartilhada por GMF e MLP.
         mlp_hidden_sizes: Tamanhos das camadas ocultas do ramo MLP.
         dropout: Probabilidade de dropout entre as camadas do MLP.
@@ -40,10 +40,10 @@ class NCFTrainingConfig:
     """Configuracao do treino inline do NCF para o pipeline de baselines.
 
     Args:
-        epochs: Numero de epocas de treino.
+        epochs: Numero de épocas de treino.
         learning_rate: Taxa de aprendizado do Adam.
         negatives_per_positive: Negativos amostrados por positivo.
-        batch_size: Tamanho do lote por passo de otimizacao.
+        batch_size: Tamanho do lote por passo de otimização.
         random_seed: Seed para reprodutibilidade.
     """
 
@@ -57,7 +57,7 @@ class NCFTrainingConfig:
 def build_mlp_layers(
     input_size: int, hidden_sizes: tuple[int, ...], dropout: float
 ) -> nn.Sequential:
-    """Constroi as camadas MLP com ReLU e dropout entre elas.
+    """Constrói as camadas MLP com ReLU e dropout entre elas.
 
     Args:
         input_size: Dimensao da entrada (concatenacao de embeddings).
@@ -78,13 +78,13 @@ def build_mlp_layers(
 
 
 class NeuralCollaborativeFiltering(nn.Module):
-    """Rede neural embedding-based para recomendacao (GMF + MLP)."""
+    """Rede neural embedding-based para recomendação (GMF + MLP)."""
 
     def __init__(self, config: NCFConfig) -> None:
         """Inicializa embeddings e cabecas dos ramos GMF e MLP.
 
         Args:
-            config: Configuracao de hiperparametros e dimensoes.
+            config: Configuracao de hiperparametros e dimensões.
         """
         super().__init__()
         self.config = config
@@ -108,11 +108,11 @@ class NeuralCollaborativeFiltering(nn.Module):
         nn.init.xavier_uniform_(self.fusion.weight)
 
     def forward(self, user_idx: torch.Tensor, item_idx: torch.Tensor) -> torch.Tensor:
-        """Calcula logits de interacao para pares usuario-item.
+        """Calcula logits de interação para pares usuário-item.
 
         Args:
-            user_idx: Tensores de indices de usuarios.
-            item_idx: Tensores de indices de itens.
+            user_idx: Tensores de índices de usuários.
+            item_idx: Tensores de índices de itens.
 
         Returns:
             Tensores de logits (antes da sigmoide) por par.
@@ -129,11 +129,11 @@ class NeuralCollaborativeFiltering(nn.Module):
 def score_candidates(
     model: NeuralCollaborativeFiltering, user_idx: int, num_items: int
 ) -> torch.Tensor:
-    """Pontua todos os itens candidatos para um usuario.
+    """Pontua todos os itens candidatos para um usuário.
 
     Args:
         model: Modelo NCF treinado.
-        user_idx: Indice do usuario alvo.
+        user_idx: Indice do usuário alvo.
         num_items: Total de itens candidatos a pontuar.
 
     Returns:
@@ -147,14 +147,14 @@ def score_candidates(
 
 
 class NeuralRecommender(RecommenderModel):
-    """Adaptador do NCF para o contrato de recomendacao do projeto.
+    """Adaptador do NCF para o contrato de recomendação do projeto.
 
     Suporta dois modos:
-    - IDs inteiros: assume NCF ja treinado e so registra historico
-      de itens vistos (compativel com pipeline DVC + checkpoint).
-    - IDs string: mapeia str<->int, reconstrui o NCF com dimensoes
+    - IDs inteiros: assume NCF já treinado e só registra histórico
+      de itens vistos (compatível com pipeline DVC + checkpoint).
+    - IDs string: mapeia str<->int, reconstrói o NCF com dimensões
       corretas e treina inline com BCE loss + negativos amostrados
-      (compativel com o pipeline de baselines comparativo).
+      (compatível com o pipeline de baselines comparativo).
     """
 
     def __init__(
@@ -178,7 +178,7 @@ class NeuralRecommender(RecommenderModel):
         self._was_trained_inline = False
 
     def fit(self, interactions: Iterable[Interaction]) -> None:
-        """Registra historico e treina o NCF inline se IDs forem string.
+        """Registra histórico e treina o NCF inline se IDs forem string.
 
         Args:
             interactions: Iteravel de pares (user_id, item_id).
@@ -190,14 +190,14 @@ class NeuralRecommender(RecommenderModel):
             self.fit_with_integer_ids(materialized)
 
     def recommend(self, user_id: str, limit: int | None = None) -> list[str]:
-        """Retorna os itens de maior pontuacao ainda nao consumidos.
+        """Retorna os itens de maior pontuação ainda não consumidos.
 
         Args:
-            user_id: Identificador do usuario (string ou inteiro como str).
-            limit: Numero maximo de itens a recomendar.
+            user_id: Identificador do usuário (string ou inteiro como str).
+            limit: Numero máximo de itens a recomendar.
 
         Returns:
-            Identificadores dos itens recomendados, ordenados por relevancia.
+            Identificadores dos itens recomendados, ordenados por relevância.
         """
         user_idx = self.resolve_user_idx(user_id)
         if user_idx is None:
@@ -229,7 +229,7 @@ class NeuralRecommender(RecommenderModel):
             return True
 
     def fit_with_string_ids(self, interactions: list[Interaction]) -> None:
-        """Mapeia str->int, reconstrui NCF e treina inline."""
+        """Mapeia str->int, reconstrói NCF e treina inline."""
         self.build_string_mappings(interactions)
         numeric_interactions = self.to_numeric_interactions(interactions)
         self.rebuild_model_for_string_ids()
@@ -238,7 +238,7 @@ class NeuralRecommender(RecommenderModel):
         self._was_trained_inline = True
 
     def build_string_mappings(self, interactions: list[Interaction]) -> None:
-        """Constroi mapeamentos bidirecionais str<->int."""
+        """Constrói mapeamentos bidirecionais str<->int."""
         user_ids = {uid for uid, _ in interactions}
         item_ids = {iid for _, iid in interactions}
         self._user_to_idx = {uid: idx for idx, uid in enumerate(sorted(user_ids))}
@@ -249,7 +249,7 @@ class NeuralRecommender(RecommenderModel):
     def to_numeric_interactions(
         self, interactions: list[Interaction]
     ) -> list[tuple[int, int]]:
-        """Converte interacoes string para pares (user_idx, item_idx)."""
+        """Converte interações string para pares (user_idx, item_idx)."""
         numeric: list[tuple[int, int]] = []
         for user_id, item_id in interactions:
             user_idx = self._user_to_idx.get(user_id)
@@ -259,7 +259,7 @@ class NeuralRecommender(RecommenderModel):
         return numeric
 
     def rebuild_model_for_string_ids(self) -> None:
-        """Reconstroi o NCF com dimensoes derivadas do mapeamento."""
+        """Reconstroi o NCF com dimensões derivadas do mapeamento."""
         config = NCFConfig(
             num_users=len(self._user_to_idx),
             num_items=len(self._item_to_idx),
@@ -270,7 +270,7 @@ class NeuralRecommender(RecommenderModel):
         self._model = NeuralCollaborativeFiltering(config)
 
     def train_inline(self, numeric_interactions: list[tuple[int, int]]) -> None:
-        """Treina o NCF com BCE loss e negativos amostrados por usuario."""
+        """Treina o NCF com BCE loss e negativos amostrados por usuário."""
         cfg = self._training_config
         torch.manual_seed(cfg.random_seed)
         optimizer = torch.optim.Adam(self._model.parameters(), lr=cfg.learning_rate)
@@ -292,15 +292,15 @@ class NeuralRecommender(RecommenderModel):
     def sample_negatives(
         self, positives: list[tuple[int, int]]
     ) -> list[tuple[int, int]]:
-        """Amostra negativos por usuario, excluindo itens do historico positivo.
+        """Amostra negativos por usuário, excluindo itens do histórico positivo.
 
-        Para cada interacao positiva (u, i), amostra
-        negatives_per_positive itens que o usuario u nao consumiu,
-        garantindo que nao ha ruido de label nos negativos.
+        Para cada interação positiva (u, i), amostra
+        negatives_per_positive itens que o usuário u não consumiu,
+        garantindo que não ha ruido de label nos negativos.
         """
         cfg = self._training_config
         n_items = self._model.config.num_items
-        # Constroi historico positivo por usuario
+        # Constrói histórico positivo por usuário
         user_positives: dict[int, set[int]] = {}
         for user_idx, item_idx in positives:
             user_positives.setdefault(user_idx, set()).add(item_idx)
@@ -330,7 +330,7 @@ class NeuralRecommender(RecommenderModel):
         labels: list[float],
         batch_size: int,
     ) -> None:
-        """Executa uma epoca de treino em lotes."""
+        """Executa uma época de treino em lotes."""
         for start in range(0, len(dataset), batch_size):
             batch = dataset[start : start + batch_size]
             batch_labels = labels[start : start + batch_size]
@@ -346,7 +346,7 @@ class NeuralRecommender(RecommenderModel):
     # --- Modo IDs inteiros (compatibilidade com pipeline DVC) ---
 
     def fit_with_integer_ids(self, interactions: list[Interaction]) -> None:
-        """Registra historico assumindo IDs ja codificados como inteiros."""
+        """Registra histórico assumindo IDs já codificados como inteiros."""
         for user_str, item_str in interactions:
             user_idx, item_idx = int(user_str), int(item_str)
             self._user_history.setdefault(user_idx, set()).add(item_idx)
@@ -354,7 +354,7 @@ class NeuralRecommender(RecommenderModel):
     # --- Predicao ---
 
     def resolve_user_idx(self, user_id: str) -> int | None:
-        """Converte user_id para indice interno, ou None se desconhecido."""
+        """Converte user_id para índice interno, ou None se desconhecido."""
         if self._was_trained_inline:
             return self._user_to_idx.get(user_id)
         try:
@@ -363,17 +363,17 @@ class NeuralRecommender(RecommenderModel):
             return None
 
     def format_item_id(self, item_idx: int) -> str:
-        """Converte indice interno do item de volta para string."""
+        """Converte índice interno do item de volta para string."""
         if self._was_trained_inline:
             return self._idx_to_item.get(item_idx, str(item_idx))
         return str(item_idx)
 
     def recommend_cold_start(self, limit: int | None) -> list[str]:
-        """Recomendacao para usuario desconhecido: retorna lista vazia."""
+        """Recomendacao para usuário desconhecido: retorna lista vazia."""
         _ = limit
         return []
 
     def register_history(self, numeric_interactions: list[tuple[int, int]]) -> None:
-        """Registra itens ja consumidos por usuario (indices internos)."""
+        """Registra itens já consumidos por usuário (índices internos)."""
         for user_idx, item_idx in numeric_interactions:
             self._user_history.setdefault(user_idx, set()).add(item_idx)

@@ -1,4 +1,4 @@
-"""Testes do EarlyStopping (modulo training)."""
+"""Testes do EarlyStopping (módulo training)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from techchallenge_fase2.training.early_stopping import EarlyStopping
 
 
 def test_step_registra_melhora_em_modo_max() -> None:
-    """Scores crescentes sao considerados melhorias em modo max."""
+    """Scores crescentes são considerados melhorias em modo max."""
     early = EarlyStopping(patience=2, mode="max")
     assert early.step(0.5) is True
     assert early.best_score == 0.5
@@ -18,7 +18,7 @@ def test_step_registra_melhora_em_modo_max() -> None:
 
 
 def test_step_interrompe_apos_patience_sem_melhora() -> None:
-    """Apos patience epocas sem melhora, should_stop passa a True."""
+    """Apos patience épocas sem melhora, should_stop passa a True."""
     early = EarlyStopping(patience=2, min_delta=0.01, mode="max")
     early.step(0.5)
     early.step(0.505)
@@ -28,7 +28,7 @@ def test_step_interrompe_apos_patience_sem_melhora() -> None:
 
 
 def test_modo_min_inverte_logica_de_melhora() -> None:
-    """Em modo min, scores decrescentes sao melhorias significativas."""
+    """Em modo min, scores decrescentes são melhorias significativas."""
     early = EarlyStopping(patience=1, min_delta=0.0, mode="min")
     assert early.step(1.0) is True
     assert early.step(0.9) is True
