@@ -46,28 +46,15 @@ baselines, pipeline reprodutível com **DVC** e experimentos rastreados com
 
 ## Arquitetura
 
-```
-                    +----------------------+
- events.csv         |  DVC pipeline        |        +----------------+
- (RetailRocket) --> | preprocess ->        | -----> | MLflow tracking|
-                    | feature_eng ->       |        | (params, metrics,|
-                    | train -> evaluate    |        |  artifacts,      |
-                    +----------------------+        |  model_card.json)|
-                           |                        +----------------+
-                           v                                |
-                  models/torch_embedding_                    |
-                  recommender.pt                              |
-                           |                                v
-                           v                        +------------------+
-                  metrics/recommendation_          | MLflow Model     |
-                  metrics.json                     | Registry          |
-                                                   | Staging ->        |
-                                                   | Production       |
-                                                   +------------------+
-                                                           | v
-                                                           v
-                                                  inference CLI (`load_model`)
-                                                  recommends via models:/.../Production
+```mermaid
+flowchart TD
+    A[("events.csv\n(RetailRocket)")] --> B["DVC pipeline\n(preprocess → feature_eng → train → evaluate)"]
+    B --> C["MLflow Tracking\n(params,metrics, artifacts, model_card.json)"]
+    B --> D["models/torch_embedding_recommender.pt"]
+    D --> E["metrics/recommendation_metrics.json"]
+    C --> F["MLflow Model Registry\nStaging → Production"]
+    F --> G["inference CLI\n(load_model)"]
+    G --> H["recommends via\nmodels:/.../Production"]
 ```
 
 Design patterns aplicados:
